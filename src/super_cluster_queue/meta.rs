@@ -13,7 +13,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use infra::errors::{Error, Result};
+use infra::{
+    db::parse_key,
+    errors::{Error, Result},
+};
 use o2_enterprise::enterprise::super_cluster::queue::{Message, MessageType};
 
 use crate::service::db::enrichment_table::{ENRICHMENT_TABLE_META_STREAM_STATS_KEY, notify_update};
@@ -22,23 +25,18 @@ pub(crate) async fn process(msg: Message) -> Result<()> {
     let db = infra::db::get_db().await;
     match msg.message_type {
         MessageType::Put => {
+            log::debug!("meta table put message key : {}", msg.key);
             db.put(&msg.key, msg.value.unwrap(), msg.need_watch, None)
                 .await?;
+
+            let (module, key1, key2) = parse_key(&msg.key);
             // hack: notify the nodes to update the meta table stats
-            if msg.key.starts_with(ENRICHMENT_TABLE_META_STREAM_STATS_KEY) {
+            if module == "enrichment_table_meta_stream_stats" {
                 log::debug!("enrichment table meta stream stats key: {}", msg.key);
-                let key_parts = msg.key.split('/').collect::<Vec<&str>>();
-                if key_parts.len() != 4 {
-                    log::error!(
-                        "enrichment table meta stream stats key is not valid: {}",
-                        msg.key
-                    );
-                    return Ok(());
-                }
                 // Format is /enrichment_table_meta_stream_stats/{org_id}/{name}
-                let org_id = key_parts[2];
-                let name = key_parts[3];
-                if let Err(e) = notify_update(org_id, name).await {
+                let org_id = key1;
+                let name = key2;
+                if let Err(e) = notify_update(&org_id, &name).await {
                     log::error!(
                         "super cluster meta queue enrichment table notify_update error: {:?}",
                         e
@@ -49,22 +47,18 @@ pub(crate) async fn process(msg: Message) -> Result<()> {
         MessageType::Delete(with_prefix) => {
             db.delete(&msg.key, with_prefix, msg.need_watch, None)
                 .await?;
-            if msg.key.starts_with(ENRICHMENT_TABLE_META_STREAM_STATS_KEY) {
+            log::debug!("meta table delete message key : {}", msg.key);
+
+            let (module, key1, key2) = parse_key(&msg.key);
+            if module == "enrichment_table_meta_stream_stats" {
                 log::debug!("enrichment table meta stream stats key: {}", msg.key);
-                let key_parts = msg.key.split('/').collect::<Vec<&str>>();
-                if key_parts.len() != 4 {
-                    log::error!(
-                        "enrichment table meta stream stats delete key is not valid: {}",
-                        msg.key
-                    );
-                    return Ok(());
-                }
+
                 // Format is /enrichment_table_meta_stream_stats/{org_id}/{name}
                 // We need to delete the db data for enrichment table because it is deleted
-                let org_id = key_parts[2];
-                let name = key_parts[3];
+                let org_id = key1;
+                let name = key2;
                 if let Err(e) =
-                    crate::service::enrichment::storage::database::delete(org_id, name).await
+                    crate::service::enrichment::storage::database::delete(&org_id, &name).await
                 {
                     log::error!("delete enrichment table db data error: {:?}", e);
                 }
