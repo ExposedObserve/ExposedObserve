@@ -597,6 +597,9 @@ pub fn register_udf(ctx: &SessionContext, org_id: &str) -> Result<()> {
         super::udaf::percentile_cont::PercentileCont::new(),
     ));
     ctx.register_udaf(AggregateUDF::from(
+        super::udaf::dds_percentile_cont::DdsPercentileCont::new(),
+    ));
+    ctx.register_udaf(AggregateUDF::from(
         super::udaf::summary_percentile::SummaryPercentile::new(),
     ));
     ctx.register_udf(super::udf::cast_to_timestamp_udf::CAST_TO_TIMESTAMP_UDF.clone());
