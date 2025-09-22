@@ -17,12 +17,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 <!-- eslint-disable vue/v-on-event-hyphenation -->
 <!-- eslint-disable vue/attribute-hyphenation -->
 <template>
-  <q-page class="q-pa-none" style="min-height: inherit; height: calc(100vh - 57px);">
+  <q-page
+    class="q-pa-none"
+    style="min-height: inherit; height: calc(100vh - 57px)"
+  >
     <div>
-      <div class="tw-flex tw-flex-row tw-justify-between tw-items-center tw-px-4 tw-py-3 tw-h-[71px] tw-border-b-[1px]"
-    :class="store.state.theme == 'dark' ? 'o2-table-header-dark tw-border-gray-500' : 'o2-table-header-light tw-border-gray-200'"
-    >
       <div
+        class="tw-flex tw-flex-row tw-justify-between tw-items-center tw-px-4 tw-py-3 tw-h-[71px] tw-border-b-[1px]"
+        :class="
+          store.state.theme == 'dark'
+            ? 'o2-table-header-dark tw-border-gray-500'
+            : 'o2-table-header-light tw-border-gray-200'
+        "
+      >
+        <div
           class="q-table__title full-width tw-font-[600]"
           data-test="user-title-text"
         >
@@ -30,17 +38,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         </div>
         <div class="full-width tw-flex tw-justify-end">
           <q-input
-              v-model="filterQuery"
-              borderless
-              dense
-              class="q-ml-auto no-border o2-search-input tw-h-[36px] tw-w-[150px]"
-              :placeholder="t('user.search')"
-              :class="store.state.theme === 'dark' ? 'o2-search-input-dark' : 'o2-search-input-light'"
-            >
-              <template #prepend>
-                <q-icon class="o2-search-input-icon" :class="store.state.theme === 'dark' ? 'o2-search-input-icon-dark' : 'o2-search-input-icon-light'" name="search" />
-              </template>
-            </q-input>
+            v-model="filterQuery"
+            borderless
+            dense
+            class="q-ml-auto no-border o2-search-input tw-h-[36px] tw-w-[150px]"
+            :placeholder="t('user.search')"
+            :class="
+              store.state.theme === 'dark'
+                ? 'o2-search-input-dark'
+                : 'o2-search-input-light'
+            "
+          >
+            <template #prepend>
+              <q-icon
+                class="o2-search-input-icon"
+                :class="
+                  store.state.theme === 'dark'
+                    ? 'o2-search-input-icon-dark'
+                    : 'o2-search-input-icon-light'
+                "
+                name="search"
+              />
+            </template>
+          </q-input>
           <div class="col-6" v-if="config.isCloud == 'true'">
             <member-invitation
               :key="currentUserRole"
@@ -51,7 +71,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             <q-btn
               class="q-ml-md o2-primary-button tw-h-[36px]"
               flat
-              :class="store.state.theme === 'dark' ? 'o2-primary-button-dark' : 'o2-primary-button-light'"
+              :class="
+                store.state.theme === 'dark'
+                  ? 'o2-primary-button-dark'
+                  : 'o2-primary-button-light'
+              "
               no-caps
               :label="t(`user.add`)"
               @click="addRoutePush({})"
@@ -68,9 +92,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
       row-key="id"
       :pagination="pagination"
       :filter="filterQuery"
-      :style="hasVisibleRows ? 'height: calc(100vh - 114px); overflow-y: auto;' : ''"
+      :style="
+        hasVisibleRows ? 'height: calc(100vh - 114px); overflow-y: auto;' : ''
+      "
       class="o2-quasar-table o2-quasar-table-header-sticky"
-      :class="store.state.theme == 'dark' ? 'o2-quasar-table-dark o2-quasar-table-header-sticky-dark o2-last-row-border-dark' : 'o2-quasar-table-light o2-quasar-table-header-sticky-light o2-last-row-border-light'"
+      :class="
+        store.state.theme == 'dark'
+          ? 'o2-quasar-table-dark o2-quasar-table-header-sticky-dark o2-last-row-border-dark'
+          : 'o2-quasar-table-light o2-quasar-table-header-sticky-light o2-last-row-border-light'
+      "
     >
       <template #no-data>
         <NoData></NoData>
@@ -124,22 +154,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         </q-td>
       </template>
       <template #bottom="scope">
-        <div class="tw-flex tw-items-center tw-justify-between tw-w-full tw-h-[48px]">
-          <div class="o2-table-footer-title tw-flex tw-items-center tw-w-[200px] tw-mr-md">
-            {{ resultTotal }} {{ t('user.header') }}
+        <div
+          class="tw-flex tw-items-center tw-justify-between tw-w-full tw-h-[48px]"
+        >
+          <div
+            class="o2-table-footer-title tw-flex tw-items-center tw-w-[200px] tw-mr-md"
+          >
+            {{ resultTotal }} {{ t("user.header") }}
           </div>
           <QTablePagination
-          :scope="scope"
-          :resultTotal="resultTotal"
-          :perPageOptions="perPageOptions"
-          position="bottom"
-          @update:changeRecordPerPage="changePagination"
-        />
+            :scope="scope"
+            :resultTotal="resultTotal"
+            :perPageOptions="perPageOptions"
+            position="bottom"
+            @update:changeRecordPerPage="changePagination"
+          />
         </div>
-        
       </template>
     </q-table>
-    </div>
 
     <q-dialog
       v-if="config.isCloud == 'false'"
@@ -178,7 +210,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         </q-card-section>
 
         <q-card-actions class="confirmActions">
-          <q-btn v-close-popup="true" unelevated no-caps class="q-mr-sm">
+          <q-btn v-close-popup="true" unelevated
+no-caps class="q-mr-sm">
             {{ t("user.cancel") }}
           </q-btn>
           <q-btn
@@ -847,26 +880,26 @@ export default defineComponent({
     };
 
     const filterData = (rows: any, terms: any) => {
-        var filtered = [];
-        terms = terms.toLowerCase();
-        for (var i = 0; i < rows.length; i++) {
-          if (
-            rows[i]["first_name"]?.toLowerCase().includes(terms) ||
-            rows[i]["last_name"]?.toLowerCase().includes(terms) ||
-            rows[i]["email"]?.toLowerCase().includes(terms) ||
-            rows[i]["role"].toLowerCase().includes(terms)
-          ) {
-            filtered.push(rows[i]);
-          }
+      var filtered = [];
+      terms = terms.toLowerCase();
+      for (var i = 0; i < rows.length; i++) {
+        if (
+          rows[i]["first_name"]?.toLowerCase().includes(terms) ||
+          rows[i]["last_name"]?.toLowerCase().includes(terms) ||
+          rows[i]["email"]?.toLowerCase().includes(terms) ||
+          rows[i]["role"].toLowerCase().includes(terms)
+        ) {
+          filtered.push(rows[i]);
         }
-        return filtered;
-      };
+      }
+      return filtered;
+    };
 
-      const visibleRows = computed(() => {
-      if (!filterQuery.value) return usersState.users || []
-      return filterData(usersState.users || [], filterQuery.value)
+    const visibleRows = computed(() => {
+      if (!filterQuery.value) return usersState.users || [];
+      return filterData(usersState.users || [], filterQuery.value);
     });
-    const hasVisibleRows = computed(() => visibleRows.value.length > 0)
+    const hasVisibleRows = computed(() => visibleRows.value.length > 0);
 
     return {
       t,
