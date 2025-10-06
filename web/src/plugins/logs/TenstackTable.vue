@@ -501,7 +501,7 @@ const sorting = ref<SortingState>([]);
 
 const store = useStore();
 const { isFTSColumn } = useTextHighlighter();
-const { processedResults } = useLogsHighlighter();
+const { processedResults, processHitsInChunks } = useLogsHighlighter();
 
 const getSortingHandler = (e: Event, fn: any) => {
   return fn(e);
@@ -547,6 +547,17 @@ watch(
 
     await nextTick();
 
+    if(props.columns?.length && tableRows.value?.length && !Object.keys(processedResults.value).length) {
+      processHitsInChunks(
+        tableRows.value,
+        props.columns,
+        true,
+        props.highlightQuery,
+        50,
+        selectedStreamFtsKeys.value
+      );
+    }
+
     if (props.defaultColumns) updateTableWidth();
   },
   {
@@ -562,6 +573,18 @@ watch(
 
     await nextTick();
     await nextTick();
+
+
+    if(props.columns?.length && tableRows.value?.length) {
+      processHitsInChunks(
+        tableRows.value,
+        props.columns,
+        true,
+        props.highlightQuery,
+        50,
+        selectedStreamFtsKeys.value
+      );
+    }
 
     expandedRowIndices.value.clear();
     // Clear height cache when rows change
@@ -737,7 +760,7 @@ const rowVirtualizerOptions = computed(() => {
             // Only measure expanded rows (check if it's actually an expanded row)
             const isExpandedRow =
               formattedRows.value[index]?.original?.isExpandedRow;
-            if (isExpandedRow) {
+            if (isExpandedRow || props.wrap) {
               const height = element.getBoundingClientRect().height;
               expandedRowHeights.value[index] = height;
               return height;
