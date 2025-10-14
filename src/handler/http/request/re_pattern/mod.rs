@@ -126,7 +126,7 @@ pub async fn save(
     Headers(user_email): Headers<UserEmail>,
     Json(req): Json<PatternCreateRequest>,
 ) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise", feature = "sdr-enabled"))]
     {
         use infra::table::{re_pattern::PatternEntry, re_pattern_stream_map::PatternPolicy};
         use o2_enterprise::enterprise::re_patterns::PatternManager;
@@ -164,11 +164,10 @@ pub async fn save(
             Err(e) => Ok(MetaHttpResponse::bad_request(e)),
         }
     }
-    #[cfg(not(feature = "enterprise"))]
+    #[cfg(any(not(feature = "enterprise"), not(feature = "sdr-enabled")))]
     {
         drop(org_id);
-        drop(in_req);
-        drop(body);
+        drop(req);
         Ok(MetaHttpResponse::forbidden("not supported"))
     }
 }
@@ -195,7 +194,7 @@ pub async fn save(
 )]
 #[get("/{org_id}/re_patterns/{id}")]
 pub async fn get(path: web::Path<(String, String)>) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise", feature = "sdr-enabled"))]
     {
         let (_org_id, id) = path.into_inner();
 
@@ -212,7 +211,7 @@ pub async fn get(path: web::Path<(String, String)>) -> Result<HttpResponse, Erro
         let res: PatternGetResponse = pattern.into();
         Ok(HttpResponse::Ok().json(res))
     }
-    #[cfg(not(feature = "enterprise"))]
+    #[cfg(any(not(feature = "enterprise"), not(feature = "sdr-enabled")))]
     {
         drop(path);
         Ok(MetaHttpResponse::forbidden("not supported"))
@@ -237,7 +236,7 @@ pub async fn get(path: web::Path<(String, String)>) -> Result<HttpResponse, Erro
 )]
 #[get("/{org_id}/re_patterns")]
 pub async fn list(path: web::Path<String>) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise", feature = "sdr-enabled"))]
     {
         let org_id = path.into_inner();
 
@@ -251,7 +250,7 @@ pub async fn list(path: web::Path<String>) -> Result<HttpResponse, Error> {
         let res = PatternListResponse { patterns };
         Ok(HttpResponse::Ok().json(res))
     }
-    #[cfg(not(feature = "enterprise"))]
+    #[cfg(any(not(feature = "enterprise"), not(feature = "sdr-enabled")))]
     {
         drop(path);
         Ok(MetaHttpResponse::forbidden("not supported"))
@@ -279,7 +278,7 @@ pub async fn list(path: web::Path<String>) -> Result<HttpResponse, Error> {
 )]
 #[delete("/{org_id}/re_patterns/{id}")]
 pub async fn delete(path: web::Path<(String, String)>) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise", feature = "sdr-enabled"))]
     {
         use o2_enterprise::enterprise::re_patterns::get_pattern_manager;
 
@@ -321,7 +320,7 @@ pub async fn delete(path: web::Path<(String, String)>) -> Result<HttpResponse, E
             Err(e) => Ok(MetaHttpResponse::internal_error(e)),
         }
     }
-    #[cfg(not(feature = "enterprise"))]
+    #[cfg(any(not(feature = "enterprise"), not(feature = "sdr-enabled")))]
     {
         drop(path);
         Ok(MetaHttpResponse::forbidden("not supported"))
@@ -358,7 +357,7 @@ pub async fn update(
     path: web::Path<(String, String)>,
     web::Json(req): web::Json<PatternCreateRequest>,
 ) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise", feature = "sdr-enabled"))]
     {
         use infra::table::re_pattern_stream_map::PatternPolicy;
         use o2_enterprise::enterprise::re_patterns::PatternManager;
@@ -394,7 +393,7 @@ pub async fn update(
             Err(e) => Ok(MetaHttpResponse::bad_request(e)),
         }
     }
-    #[cfg(not(feature = "enterprise"))]
+    #[cfg(any(not(feature = "enterprise"), not(feature = "sdr-enabled")))]
     {
         drop(path);
         drop(req);
@@ -426,7 +425,7 @@ pub async fn update(
 )]
 #[post("/{org_id}/re_patterns/test")]
 pub async fn test(web::Json(req): web::Json<PatternTestRequest>) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise",feature="sdr-enabled"))]
     {
         use infra::table::re_pattern_stream_map::PatternPolicy;
         use o2_enterprise::enterprise::re_patterns::PatternManager;
@@ -449,7 +448,7 @@ pub async fn test(web::Json(req): web::Json<PatternTestRequest>) -> Result<HttpR
 
         Ok(HttpResponse::Ok().json(PatternTestResponse { results: ret }))
     }
-    #[cfg(not(feature = "enterprise"))]
+    #[cfg(any(not(feature = "enterprise"), not(feature = "sdr-enabled")))]
     {
         drop(req);
         Ok(MetaHttpResponse::forbidden("not supported"))

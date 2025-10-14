@@ -42,7 +42,7 @@ use infra::{
     cache::{file_data::disk::QUERY_RESULT_CACHE, meta::ResultCacheMeta},
     errors::Error,
 };
-#[cfg(feature = "enterprise")]
+#[cfg(all(feature = "enterprise", feature = "sdr-enabled"))]
 use o2_enterprise::enterprise::re_patterns::get_pattern_manager;
 use proto::cluster_rpc::SearchQuery;
 use result_utils::get_ts_value;
@@ -1036,6 +1036,8 @@ pub async fn apply_regex_to_response(
         return Ok(());
     }
 
+    #[cfg(feature = "sdr-enabled")]
+    {
     let pattern_manager = get_pattern_manager().await?;
 
     let query: proto::cluster_rpc::SearchQuery = req.query.clone().into();
@@ -1062,5 +1064,10 @@ pub async fn apply_regex_to_response(
             log::error!("error in processing records for patterns for stream {all_streams} : {e}");
             Err(infra::errors::Error::Message(e.to_string()))
         }
+    }
+    }
+    #[cfg(not(feature = "sdr-enabled"))]
+    {
+        Ok(())
     }
 }

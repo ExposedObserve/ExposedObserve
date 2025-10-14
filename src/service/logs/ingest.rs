@@ -38,7 +38,7 @@ use infra::{
     errors::{Error, Result},
     schema::get_flatten_level,
 };
-#[cfg(feature = "enterprise")]
+#[cfg(all(feature = "enterprise",feature = "sdr-enabled"))]
 use o2_enterprise::enterprise::re_patterns::get_pattern_manager;
 use opentelemetry_proto::tonic::{
     collector::metrics::v1::ExportMetricsServiceRequest,
@@ -77,7 +77,7 @@ pub async fn ingest(
     let cfg = config::get_config();
     let mut need_usage_report = true;
     let log_ingestion_errors = ingestion_log_enabled().await;
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise", feature="sdr-enabled"))]
     let pattern_manager = get_pattern_manager().await?;
 
     // check stream
@@ -491,7 +491,7 @@ pub async fn ingest(
     drop(original_options);
     drop(user_defined_schema_map);
 
-    #[cfg(feature = "enterprise")]
+    #[cfg(all(feature = "enterprise",feature = "sdr-enabled"))]
     {
         for (stream, data) in json_data_by_stream.iter_mut() {
             match pattern_manager.process_at_ingestion(

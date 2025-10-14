@@ -20,11 +20,17 @@ use infra::{
     table::re_pattern_stream_map::{ApplyPolicy, PatternAssociationEntry, PatternPolicy},
 };
 use o2_enterprise::enterprise::{
-    re_patterns::get_pattern_manager,
     super_cluster::queue::{Message, MessageType, RePatternsMessage},
 };
 
+#[cfg(not(feature = "sdr-enabled"))]
+pub(crate) async fn process(_msg: Message) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(feature = "sdr-enabled")]
 pub(crate) async fn process(msg: Message) -> Result<()> {
+    use o2_enterprise::enterprise::re_patterns::get_pattern_manager;
     match msg.message_type {
         MessageType::RePatternsTable => {
             let v = match msg.value {

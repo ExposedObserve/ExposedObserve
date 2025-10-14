@@ -40,7 +40,7 @@ pub mod org_users;
 pub mod organization;
 pub mod pipeline;
 pub mod pipeline_errors;
-#[cfg(feature = "enterprise")]
+#[cfg(all(feature = "enterprise", feature="sdr-enabled"))]
 pub mod re_pattern;
 pub mod saved_view;
 pub mod scheduler;
