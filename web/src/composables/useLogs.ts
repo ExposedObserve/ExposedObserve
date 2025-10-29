@@ -88,7 +88,7 @@ const useLogs = () => {
   const { getStreams } = useStreams();
 
   const router = useRouter();
-  
+
   onBeforeMount(async () => {
     if (router.currentRoute.value.query?.quick_mode == "true") {
       searchObj.meta.quickMode = true;
@@ -361,6 +361,18 @@ const useLogs = () => {
   };
 
   const loadVisualizeData = async () => {
+    try {
+      resetFunctions();
+      await getStreamList();
+      await getFunctions();
+      if (isActionsEnabled.value) await getActions();
+      await extractFields();
+    } catch (e: any) {
+      searchObj.loading = false;
+    }
+  };
+
+  const loadPatternsData = async () => {
     try {
       resetFunctions();
       await getStreamList();
@@ -819,6 +831,7 @@ const useLogs = () => {
     $q,
     clearSearchObj,
     loadVisualizeData,
+    loadPatternsData,
     processHttpHistogramResults,
   };
 };

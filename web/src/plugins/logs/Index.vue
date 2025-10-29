@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             @handleRunQueryFn="handleRunQueryFn"
             @on-auto-interval-trigger="onAutoIntervalTrigger"
             @showSearchHistory="showSearchHistoryfn"
+            @extractPatterns="extractPatternsForCurrentQuery"
           />
         </template>
         <template v-slot:after>
@@ -56,7 +57,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               @update:model-value="onSplitterUpdate"
             >
               <template #before>
-                <div class="relative-position full-height" style="overflow: visible !important;">
+                <div
+                  class="relative-position full-height"
+                  style="overflow: visible !important"
+                >
                   <index-list
                     v-show="searchObj.meta.showFields"
                     data-test="logs-search-index-list"
@@ -94,7 +98,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                   class="q-mt-lg"
                 >
                   <h5 class="text-center">
-                    <q-icon name="warning" color="warning" size="10rem" /><br />
+                    <q-icon name="warning" color="warning"
+size="10rem" /><br />
                     <div
                       data-test="logs-search-filter-error-message"
                       v-html="searchObj.data.filterErrMsg"
@@ -174,7 +179,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     data-test="logs-search-no-stream-selected-text"
                     class="text-center col-10 q-mx-none"
                   >
-                    <q-icon name="info" color="primary" size="md" /> Select a
+                    <q-icon name="info" color="primary"
+size="md" /> Select a
                     stream and press 'Run query' to continue. Additionally, you
                     can apply additional filters and adjust the date range to
                     enhance search.
@@ -182,6 +188,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </div>
                 <div
                   v-else-if="
+                    searchObj.meta.logsVisualizeToggle === 'logs' &&
                     searchObj.data.queryResults.hasOwnProperty('hits') &&
                     searchObj.data.queryResults.hits.length == 0 &&
                     searchObj.loading == false &&
@@ -193,7 +200,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     data-test="logs-search-error-message"
                     class="text-center q-ma-none col-10"
                   >
-                    <q-icon name="info" color="primary" size="md" />
+                    <q-icon name="info" color="primary"
+size="md" />
                     {{ t("search.noRecordFound") }}
                     <q-btn
                       v-if="
@@ -220,7 +228,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     data-test="logs-search-error-message"
                     class="text-center q-ma-none col-10"
                   >
-                    <q-icon name="info" color="primary" size="md" />
+                    <q-icon name="info" color="primary"
+size="md" />
+                    {{ t("search.applySearch") }}
+                  </h6>
+                </div>
+                <div
+                  v-else-if="
+                    searchObj.meta.logsVisualizeToggle === 'patterns' &&
+                    patternsState?.patterns?.patterns?.length == 0 &&
+                    searchObj.meta.searchApplied == false &&
+                    searchObj.loading == false
+                  "
+                  class="row q-mt-lg"
+                >
+                  <h6
+                    data-test="logs-search-error-message"
+                    class="text-center q-ma-none col-10"
+                  >
+                    <q-icon name="info" color="primary"
+size="md" />
                     {{ t("search.applySearch") }}
                   </h6>
                 </div>
@@ -285,7 +312,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         v-else-if="showSearchHistory && !store.state.zoConfig.usage_enabled"
         class="search-history-empty"
       >
-        <div class="search-history-empty__content text-center q-pa-md flex flex-center">
+        <div
+          class="search-history-empty__content text-center q-pa-md flex flex-center"
+        >
           <div>
             <div>
               <q-icon
@@ -301,11 +330,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             <div
               class="search-history-empty__info q-mt-sm flex items-center justify-center"
             >
-              <q-icon
-                name="info"
-                class="q-mr-xs"
-                size="20px"
-              />
+              <q-icon name="info"
+class="q-mr-xs" size="20px" />
               <span class="text-h6 text-center">
                 Set ZO_USAGE_REPORTING_ENABLED to true to enable usage
                 reporting.</span
@@ -374,7 +400,11 @@ import useDashboardPanelData from "@/composables/useDashboardPanel";
 import { reactive } from "vue";
 import { getConsumableRelativeTime } from "@/utils/date";
 import { cloneDeep, debounce } from "lodash-es";
-import { buildSqlQuery, getFieldsFromQuery, isSimpleSelectAllQuery } from "@/utils/query/sqlUtils";
+import {
+  buildSqlQuery,
+  getFieldsFromQuery,
+  isSimpleSelectAllQuery,
+} from "@/utils/query/sqlUtils";
 import useNotifications from "@/composables/useNotifications";
 import { checkIfConfigChangeRequiredApiCallOrNot } from "@/utils/dashboard/checkConfigChangeApiCall";
 import SearchBar from "@/plugins/logs/SearchBar.vue";
@@ -399,7 +429,6 @@ import { useHistogram } from "@/composables/useLogs/useHistogram";
 import useStreams from "@/composables/useStreams";
 import { contextRegistry } from "@/composables/contextProviders";
 import { createLogsContextProvider } from "@/composables/contextProviders/logsContextProvider";
-
 
 export default defineComponent({
   name: "PageSearch",
@@ -579,6 +608,7 @@ export default defineComponent({
       clearSearchObj,
       processHttpHistogramResults,
       loadVisualizeData,
+      loadPatternsData,
     } = useLogs();
 
     const {
@@ -599,8 +629,12 @@ export default defineComponent({
       updateUrlQueryParams,
       addTraceId,
     } = logsUtils();
-    const { buildWebSocketPayload, buildSearch, initializeSearchConnection, getQueryReq } =
-      useSearchStream();
+    const {
+      buildWebSocketPayload,
+      buildSearch,
+      initializeSearchConnection,
+      getQueryReq,
+    } = useSearchStream();
 
     // Initialize patterns composable (completely separate from logs)
     const { extractPatterns, patternsState } = usePatterns();
@@ -650,7 +684,11 @@ export default defineComponent({
       schemaCache.value = null;
     };
 
-    const { registerAiChatHandler, removeAiChatHandler, initializeDefaultContext } = useAiChat();
+    const {
+      registerAiChatHandler,
+      removeAiChatHandler,
+      initializeDefaultContext,
+    } = useAiChat();
 
     onUnmounted(() => {
       // reset logsVisualizeToggle when user navigate to other page with keepAlive is false and navigate back to logs page
@@ -845,48 +883,62 @@ export default defineComponent({
       }
     };
 
-    // Watch for patterns mode switch - completely separate from logs flow
-    watch(
-      () => searchObj.meta.logsVisualizeToggle,
-      async (newMode, oldMode) => {
-        if (newMode === 'patterns') {
-          console.log('[Index] Switched to patterns mode - fetching patterns');
-          searchObj.loading = true; // Set loading state for UI
+    /**
+     * Common method to extract patterns
+     * Handles validation, loading states, and error handling
+     */
+    const extractPatternsForCurrentQuery = async () => {
+      console.log("[Index] Extracting patterns for current query");
+      searchObj.meta.resultGrid.showPagination = false;
+      searchObj.loading = true;
 
-          try {
-            const queryReq = getQueryReq(false, false);
-            if (!queryReq) {
-              console.log('[Index] No query request available');
-              searchObj.loading = false;
-              return;
-            }
-
-            const streamName = searchObj.data.stream.selectedStream[0];
-            if (!streamName) {
-              console.log('[Index] No stream selected');
-              searchObj.loading = false;
-              return;
-            }
-
-            await extractPatterns(
-              searchObj.organizationIdentifier,
-              streamName,
-              queryReq
-            );
-
-            searchObj.loading = false; // Clear loading state after patterns fetched
-            console.log('[Index] Patterns fetched successfully');
-          } catch (error) {
-            console.error('[Index] Error fetching patterns:', error);
-            searchObj.loading = false;
-            showErrorNotification('Error extracting patterns. Please try again.');
-          }
-        } else if (oldMode === 'patterns') {
-          console.log('[Index] Switched from patterns to', newMode);
-          // No need to clear patterns - they can be cached
+      try {
+        const queryReq = getQueryReq(false, false);
+        if (!queryReq) {
+          console.log("[Index] No query request available");
+          searchObj.loading = false;
+          return;
         }
+
+        const streamName = searchObj.data.stream.selectedStream[0];
+        if (!streamName) {
+          console.log("[Index] No stream selected");
+          searchObj.loading = false;
+          showErrorNotification("Please select a stream to extract patterns");
+          return;
+        }
+
+        await extractPatterns(
+          searchObj.organizationIdentifier,
+          streamName,
+          queryReq,
+        );
+        searchObj.loading = false;
+
+        searchObj.meta.refreshHistogram = true;
+        await getQueryData();
+        refreshHistogramChart();
+        console.log("[Index] Patterns extracted successfully");
+      } catch (error) {
+        console.error("[Index] Error extracting patterns:", error);
+        searchObj.loading = false;
+        showErrorNotification("Error extracting patterns. Please try again.");
       }
-    );
+    };
+
+    // // Watch for patterns mode switch - completely separate from logs flow
+    // watch(
+    //   () => searchObj.meta.logsVisualizeToggle,
+    //   async (newMode, oldMode) => {
+    //     if (newMode === "patterns") {
+    //       console.log("[Index] Switched to patterns mode - fetching patterns");
+    //       await extractPatternsForCurrentQuery();
+    //     } else if (oldMode === "patterns") {
+    //       console.log("[Index] Switched from patterns to", newMode);
+    //       // No need to clear patterns - they can be cached
+    //     }
+    //   },
+    // );
 
     // Main method for handling before mount logic
     async function handleBeforeMount() {
@@ -960,6 +1012,9 @@ export default defineComponent({
 
           if (isLogsTab()) {
             loadLogsData();
+          } else if (searchObj.meta.logsVisualizeToggle === "patterns") {
+            await loadPatternsData();
+            await extractPatternsForCurrentQuery();
           } else {
             loadVisualizeData();
             searchObj.loading = false;
@@ -1415,7 +1470,6 @@ export default defineComponent({
       return parsedSQL;
     };
 
-
     const handleQuickModeChange = () => {
       if (searchObj.meta.quickMode == true) {
         let field_list: string = "*";
@@ -1849,15 +1903,15 @@ export default defineComponent({
         // wait to extract fields if its ongoing; if promise rejects due to abort just return silently
         try {
           let logsPageQuery = "";
-          
+
           // handle sql mode
-          if(!searchObj.meta.sqlMode){
+          if (!searchObj.meta.sqlMode) {
             const queryBuild = buildSearch();
             logsPageQuery = queryBuild?.query?.sql ?? "";
           } else {
             logsPageQuery = searchObj.data.query;
           }
-          
+
           // Check if query is SELECT * which is not supported for visualization
           if (
             store.state.zoConfig.quick_mode_enabled === true &&
@@ -1930,6 +1984,11 @@ export default defineComponent({
 
         // Sync visualization config to URL parameters
         updateUrlQueryParams(dashboardPanelData);
+      }
+
+      if (searchObj.meta.logsVisualizeToggle == "patterns") {
+        // Extract patterns when user clicks run query in patterns mode
+        await extractPatternsForCurrentQuery();
       }
     };
 
@@ -2302,33 +2361,33 @@ export default defineComponent({
 
     /**
      * Setup the logs context provider for AI chat integration
-     * 
+     *
      * Example: When user opens logs page, this registers the context provider
      * that will extract current search state and comprehensive schema information for AI context
      * Follows the same schema extraction pattern as legacy AI context system
      */
     const setupContextProvider = () => {
       const provider = createLogsContextProvider(
-        searchObj, 
-        store, 
-        dashboardPanelData
+        searchObj,
+        store,
+        dashboardPanelData,
       );
-      
-      contextRegistry.register('logs', provider);
-      contextRegistry.setActive('logs');
+
+      contextRegistry.register("logs", provider);
+      contextRegistry.setActive("logs");
     };
 
     /**
      * Cleanup logs context provider when leaving logs page
-     * 
+     *
      * Example: When user navigates away from logs, this deactivates the logs provider
      * but keeps the default provider available for fallback
      */
     const cleanupContextProvider = () => {
       // Only unregister the logs provider, keep default provider
-      contextRegistry.unregister('logs');
+      contextRegistry.unregister("logs");
       // Reset to no active provider, so it falls back to default
-      contextRegistry.setActive('');
+      contextRegistry.setActive("");
     };
 
     // [END] Context Provider Setup
@@ -2411,6 +2470,7 @@ export default defineComponent({
       searchResponseForVisualization,
       shouldUseHistogramQuery,
       clearSchemaCache,
+      extractPatternsForCurrentQuery,
     };
   },
   computed: {
@@ -2818,5 +2878,5 @@ export default defineComponent({
 </style>
 
 <style lang="scss">
-@import '@/styles/logs/logs-page.scss';
+@import "@/styles/logs/logs-page.scss";
 </style>

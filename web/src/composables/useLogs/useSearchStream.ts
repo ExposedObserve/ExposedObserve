@@ -115,14 +115,13 @@ export const useSearchStream = () => {
     }
 
     // reset searchAggData
-    if (shouldResetData) {
-      searchAggData.total = 0;
-      searchAggData.hasAggregation = false;
+    searchAggData.total = 0;
+    searchAggData.hasAggregation = false;
 
-      searchObj.meta.showDetailTab = false;
-      searchObj.meta.searchApplied = true;
-      searchObj.data.functionError = "";
-    }
+    searchObj.meta.showDetailTab = false;
+    searchObj.meta.searchApplied = true;
+    searchObj.data.functionError = "";
+
 
     if (
       !searchObj.data.stream.streamLists?.length ||
@@ -211,9 +210,10 @@ export const useSearchStream = () => {
       (searchObj.data.resultGrid.currentPage - 1) *
       searchObj.meta.resultGrid.rowsPerPage;
     // Increase size to 2000 when patterns mode is enabled to get more data for pattern extraction
-    queryReq.query.size = searchObj.meta.logsVisualizeToggle === 'patterns'
-      ? 2000
-      : searchObj.meta.resultGrid.rowsPerPage;
+    queryReq.query.size =
+      searchObj.meta.logsVisualizeToggle === "patterns"
+        ? 2000
+        : searchObj.meta.resultGrid.rowsPerPage;
 
     const parsedSQL: any = fnParsedSQL();
 
@@ -223,12 +223,18 @@ export const useSearchStream = () => {
       // if query has aggregation or groupby then we need to set size to -1 to get all records
       // issue #5432
       // BUT: Don't override size when patterns mode is enabled - we need 2000 logs for pattern extraction
-      if ((hasAggregation(parsedSQL?.columns) || parsedSQL.groupby != null) && searchObj.meta.logsVisualizeToggle !== 'patterns') {
+      if (
+        (hasAggregation(parsedSQL?.columns) || parsedSQL.groupby != null) &&
+        searchObj.meta.logsVisualizeToggle !== "patterns"
+      ) {
         queryReq.query.size = -1;
       }
 
       // Don't apply LIMIT from SQL when patterns mode is enabled - we need 2000 logs
-      if (isLimitQuery(parsedSQL) && searchObj.meta.logsVisualizeToggle !== 'patterns') {
+      if (
+        isLimitQuery(parsedSQL) &&
+        searchObj.meta.logsVisualizeToggle !== "patterns"
+      ) {
         queryReq.query.size = parsedSQL.limit.value[0].value;
         searchObj.meta.resultGrid.showPagination = false;
         //searchObj.meta.resultGrid.rowsPerPage = queryReq.query.size;
@@ -258,12 +264,12 @@ export const useSearchStream = () => {
 
       if (!queryReq) return;
 
-      // Patterns mode is handled separately in SearchBar.vue
-      // This function only handles logs and visualize modes
-      if (searchObj.meta.logsVisualizeToggle === 'patterns') {
-        console.log('[Search] Patterns mode - skipping logs search');
-        return;
-      }
+      // // Patterns mode is handled separately in SearchBar.vue
+      // // This function only handles logs and visualize modes
+      // if (searchObj.meta.logsVisualizeToggle === "patterns") {
+      //   console.log("[Search] Patterns mode - skipping logs search");
+      //   return;
+      // }
 
       if (!isPagination && searchObj.meta.refreshInterval == 0) {
         resetQueryData();
