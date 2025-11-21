@@ -376,7 +376,7 @@
     "frustrationCount": "Frustraties"
   },
   "about": {
-    "name": "OpenObserve",
+    "name": "ExposedObserve",
     "introduction": "Waarneembaarheid vereenvoudigd.",
     "version": "Versie",
     "commitHash": "Hash vastleggen",

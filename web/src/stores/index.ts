@@ -1,4 +1,5 @@
 // Copyright 2023 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -24,10 +25,10 @@ import logs from "./logs";
 
 const pos = window.location.pathname.indexOf("/web/");
 
-const API_ENDPOINT = import.meta.env.VITE_OPENOBSERVE_ENDPOINT
-  ? import.meta.env.VITE_OPENOBSERVE_ENDPOINT.endsWith("/")
-    ? import.meta.env.VITE_OPENOBSERVE_ENDPOINT.slice(0, -1)
-    : import.meta.env.VITE_OPENOBSERVE_ENDPOINT
+const API_ENDPOINT = import.meta.env.VITE_EXPOSEDOBSERVE_ENDPOINT
+  ? import.meta.env.VITE_EXPOSEDOBSERVE_ENDPOINT.endsWith("/")
+    ? import.meta.env.VITE_EXPOSEDOBSERVE_ENDPOINT.slice(0, -1)
+    : import.meta.env.VITE_EXPOSEDOBSERVE_ENDPOINT
   : window.location.origin == "http://localhost:8081"
     ? "/"
     : pos > -1

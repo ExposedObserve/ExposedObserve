@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -43,7 +44,7 @@ impl GitHubDataService {
     pub fn with_config(config: GitHubServiceConfig) -> Self {
         let client = reqwest::Client::builder()
             .timeout(config.timeout)
-            .user_agent("OpenObserve")
+            .user_agent("ExposedObserve")
             .build()
             .expect("Failed to create HTTP client");
 

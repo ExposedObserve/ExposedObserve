@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -48,7 +49,7 @@ mod tests {
         },
     };
     use infra::schema::{STREAM_SCHEMAS, STREAM_SCHEMAS_LATEST, STREAM_SETTINGS};
-    use openobserve::{
+    use exposedobserve::{
         common::{
             infra::config::ENRICHMENT_TABLES,
             meta::{ingestion::IngestionResponse, user::UserList},
@@ -237,7 +238,7 @@ mod tests {
         });
 
         // register node
-        openobserve::common::infra::cluster::register_and_keep_alive()
+        exposedobserve::common::infra::cluster::register_and_keep_alive()
             .await
             .unwrap();
         // init config
@@ -249,11 +250,11 @@ mod tests {
         // db migration steps, since it's separated out
         infra::table::migrate().await.unwrap();
         infra::init().await.unwrap();
-        openobserve::common::infra::init().await.unwrap();
+        exposedobserve::common::infra::init().await.unwrap();
         // ingester init
         ingester::init().await.unwrap();
         // init job
-        openobserve::job::init().await.unwrap();
+        exposedobserve::job::init().await.unwrap();
 
         // Wait for async initialization tasks (like default user creation) to complete
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
@@ -2180,7 +2181,7 @@ mod tests {
         assert!(resp.status().is_success());
 
         // Get the alert with the same stream name
-        let alert = openobserve::service::db::alerts::alert::get_by_name(
+        let alert = exposedobserve::service::db::alerts::alert::get_by_name(
             "e2e",
             config::meta::stream::StreamType::Logs,
             "olympics_schema",
@@ -2198,7 +2199,7 @@ mod tests {
         assert!(id.is_some());
         let id = id.unwrap();
         // Check the trigger
-        let trigger = openobserve::service::db::scheduler::exists(
+        let trigger = exposedobserve::service::db::scheduler::exists(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2221,7 +2222,7 @@ mod tests {
         .await;
 
         // Get the alert with the same stream name
-        let alert = openobserve::service::db::alerts::alert::get_by_name(
+        let alert = exposedobserve::service::db::alerts::alert::get_by_name(
             "e2e",
             config::meta::stream::StreamType::Logs,
             "olympics_schema",
@@ -2245,7 +2246,7 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
-        let trigger = openobserve::service::db::scheduler::exists(
+        let trigger = exposedobserve::service::db::scheduler::exists(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2325,7 +2326,7 @@ mod tests {
         let id = id.to_string();
 
         // Check the trigger
-        let trigger = openobserve::service::db::scheduler::exists(
+        let trigger = exposedobserve::service::db::scheduler::exists(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2382,14 +2383,14 @@ mod tests {
         assert_eq!(alert_response.0.name, "alertChk");
         assert_eq!(
             alert_response.0.stream_type,
-            openobserve::handler::http::models::alerts::StreamType::Logs
+            exposedobserve::handler::http::models::alerts::StreamType::Logs
         );
         assert_eq!(alert_response.0.stream_name, "olympics_schema");
         assert!(alert_response.0.enabled);
     }
 
     async fn e2e_handle_alert_after_destination_retries() {
-        let alert = openobserve::service::db::alerts::alert::get_by_name(
+        let alert = exposedobserve::service::db::alerts::alert::get_by_name(
             "e2e",
             config::meta::stream::StreamType::Logs,
             "olympics_schema",
@@ -2438,7 +2439,7 @@ mod tests {
             }
         }
 
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2456,7 +2457,7 @@ mod tests {
                 .unwrap()
                 .num_microseconds()
                 .unwrap();
-        let alert = openobserve::service::db::alerts::alert::get_by_name(
+        let alert = exposedobserve::service::db::alerts::alert::get_by_name(
             "e2e",
             config::meta::stream::StreamType::Logs,
             "olympics_schema",
@@ -2490,7 +2491,7 @@ mod tests {
         // This alert has an invalid destination
         assert!(res.is_ok());
 
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2524,7 +2525,7 @@ mod tests {
         };
         alert.destinations = vec!["slack".to_string()];
 
-        let res = openobserve::service::db::alerts::alert::set("e2e", alert, true).await;
+        let res = exposedobserve::service::db::alerts::alert::set("e2e", alert, true).await;
         assert!(res.is_ok());
         let alert = res.unwrap();
         let id = alert.id;
@@ -2557,7 +2558,7 @@ mod tests {
         // In case of alert evaluation errors, this error is returned
         assert!(res.is_err());
 
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2567,7 +2568,7 @@ mod tests {
         let trigger = trigger.unwrap();
         assert!(trigger.next_run_at > now && trigger.retries == 0);
 
-        let res = openobserve::service::db::alerts::alert::delete_by_name(
+        let res = exposedobserve::service::db::alerts::alert::delete_by_name(
             "e2e",
             config::meta::stream::StreamType::Logs,
             "olympics_schema",
@@ -2590,7 +2591,7 @@ mod tests {
         )
         .await;
 
-        let alert = openobserve::service::db::alerts::alert::get_by_name(
+        let alert = exposedobserve::service::db::alerts::alert::get_by_name(
             "e2e",
             config::meta::stream::StreamType::Logs,
             "olympics_schema",
@@ -2617,7 +2618,7 @@ mod tests {
         log::info!("{:?}", resp.status());
         assert!(resp.status().is_success());
 
-        let trigger = openobserve::service::db::scheduler::exists(
+        let trigger = exposedobserve::service::db::scheduler::exists(
             "e2e",
             config::meta::triggers::TriggerModule::Alert,
             &id.to_string(),
@@ -2834,7 +2835,7 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
         let body = test::read_body(resp).await;
-        let pipeline_list: openobserve::handler::http::models::pipelines::PipelineList =
+        let pipeline_list: exposedobserve::handler::http::models::pipelines::PipelineList =
             json::from_slice(&body).unwrap();
         let pipeline = pipeline_list.list.first();
         assert!(pipeline.is_some());
@@ -2880,7 +2881,7 @@ mod tests {
         let mut trigger_updated = false;
 
         while attempts < max_attempts {
-            let trigger = openobserve::service::db::scheduler::get(
+            let trigger = exposedobserve::service::db::scheduler::get(
                 "e2e",
                 TriggerModule::DerivedStream,
                 &module_key,
@@ -2965,7 +2966,7 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
         let body = test::read_body(resp).await;
-        let pipeline_list: openobserve::handler::http::models::pipelines::PipelineList =
+        let pipeline_list: exposedobserve::handler::http::models::pipelines::PipelineList =
             json::from_slice(&body).unwrap();
         let pipelines = pipeline_list.list.first();
         assert!(pipelines.is_some());
@@ -3000,7 +3001,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Verify trigger was updated with next run time and retries reset
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             TriggerModule::DerivedStream,
             &module_key,
@@ -3144,7 +3145,7 @@ mod tests {
         let _ = handle_triggers(trace_id, trigger).await;
         // Should succeed (handler handles errors gracefully) but increment retries
         // Verify trigger retries were incremented
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             TriggerModule::DerivedStream,
             &module_key,
@@ -3155,7 +3156,7 @@ mod tests {
         assert!(trigger.retries > 0);
 
         // Clean up the invalid pipeline
-        let _ = openobserve::service::db::pipeline::delete(&pipeline.id).await;
+        let _ = exposedobserve::service::db::pipeline::delete(&pipeline.id).await;
     }
 
     // Test to handle case where pipeline triggers for invalid timerange where start time
@@ -3283,7 +3284,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Get the trigger from the database
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             TriggerModule::DerivedStream,
             &format!("logs/e2e/test_invalid_timerange_pipeline/{}", pipeline.id),
@@ -3304,9 +3305,9 @@ mod tests {
         );
 
         // Clean up
-        let _ = openobserve::service::db::pipeline::delete(&pipeline.id).await;
+        let _ = exposedobserve::service::db::pipeline::delete(&pipeline.id).await;
         // Also delete the trigger job from scheduled jobs table
-        let _ = openobserve::service::db::scheduler::delete(
+        let _ = exposedobserve::service::db::scheduler::delete(
             "e2e",
             TriggerModule::DerivedStream,
             &format!("logs/e2e/test_invalid_timerange_pipeline/{}", pipeline.id),
@@ -3465,7 +3466,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Get the trigger from the database
-        let trigger = openobserve::service::db::scheduler::get(
+        let trigger = exposedobserve::service::db::scheduler::get(
             "e2e",
             TriggerModule::DerivedStream,
             &format!(
@@ -3489,9 +3490,9 @@ mod tests {
         );
 
         // Clean up
-        let _ = openobserve::service::db::pipeline::delete(&pipeline.id).await;
+        let _ = exposedobserve::service::db::pipeline::delete(&pipeline.id).await;
         // Also delete the trigger job from scheduled jobs table
-        let _ = openobserve::service::db::scheduler::delete(
+        let _ = exposedobserve::service::db::scheduler::delete(
             "e2e",
             TriggerModule::DerivedStream,
             &format!(
@@ -3521,14 +3522,14 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
         let body = test::read_body(resp).await;
-        let pipeline_list: openobserve::handler::http::models::pipelines::PipelineList =
+        let pipeline_list: exposedobserve::handler::http::models::pipelines::PipelineList =
             json::from_slice(&body).unwrap();
         let pipeline = pipeline_list.list.first();
         assert!(pipeline.is_some());
         let pipeline = pipeline.unwrap();
 
         // Clean up test pipelines
-        let _ = openobserve::service::db::pipeline::delete(&pipeline.id).await;
+        let _ = exposedobserve::service::db::pipeline::delete(&pipeline.id).await;
     }
 
     async fn get_pipeline_from_api(pipeline_name: &str) -> http::models::pipelines::Pipeline {
@@ -3550,7 +3551,7 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success(), "Failed to list pipelines");
         let body = test::read_body(resp).await;
-        let pipeline_response: openobserve::handler::http::models::pipelines::PipelineList =
+        let pipeline_response: exposedobserve::handler::http::models::pipelines::PipelineList =
             json::from_slice(&body).unwrap();
         // Get the pipeline that matches the pipeline name
         let pipeline = pipeline_response
@@ -3590,7 +3591,7 @@ mod tests {
         payload.push(record2);
 
         // Call save_enrichment_data
-        let result = openobserve::service::enrichment_table::save_enrichment_data(
+        let result = exposedobserve::service::enrichment_table::save_enrichment_data(
             org_id, table_name, payload, false, // append_data = false
         )
         .await;
@@ -3600,7 +3601,7 @@ mod tests {
         assert!(response.status().is_success());
 
         // Verify schema was created in database
-        let schema_exists = openobserve::service::schema::stream_schema_exists(
+        let schema_exists = exposedobserve::service::schema::stream_schema_exists(
             org_id,
             table_name,
             config::meta::stream::StreamType::EnrichmentTables,
@@ -3635,7 +3636,7 @@ mod tests {
 
         // Get the meta table stats for enrichment table
         let meta_table_stats =
-            openobserve::service::db::enrichment_table::get_meta_table_stats(org_id, table_name)
+            exposedobserve::service::db::enrichment_table::get_meta_table_stats(org_id, table_name)
                 .await;
         assert!(meta_table_stats.is_some());
         let meta_table_stats = meta_table_stats.unwrap();
@@ -3644,7 +3645,7 @@ mod tests {
 
         // Check get_enrichment_table function, it should return same data
         let data =
-            openobserve::service::enrichment::get_enrichment_table(org_id, table_name, false).await;
+            exposedobserve::service::enrichment::get_enrichment_table(org_id, table_name, false).await;
         assert!(data.is_ok());
         let data = data.unwrap();
         assert!(data.len() == 2);
@@ -3687,7 +3688,7 @@ mod tests {
 
     async fn e2e_cleanup_enrichment_table(org_id: &str, stream_name: &str) {
         // Clean up the enrichment table and its schema
-        openobserve::service::enrichment_table::delete_enrichment_table(
+        exposedobserve::service::enrichment_table::delete_enrichment_table(
             org_id,
             stream_name,
             config::meta::stream::StreamType::EnrichmentTables,
@@ -3745,7 +3746,7 @@ mod tests {
         );
         initial_payload.push(record1);
 
-        let result1 = openobserve::service::enrichment_table::save_enrichment_data(
+        let result1 = exposedobserve::service::enrichment_table::save_enrichment_data(
             org_id,
             table_name,
             initial_payload,
@@ -3756,7 +3757,7 @@ mod tests {
 
         // Get the meta table stats for enrichment table
         let meta_table_stats_first =
-            openobserve::service::db::enrichment_table::get_meta_table_stats(org_id, table_name)
+            exposedobserve::service::db::enrichment_table::get_meta_table_stats(org_id, table_name)
                 .await;
         assert!(meta_table_stats_first.is_some());
         let meta_table_stats_first = meta_table_stats_first.unwrap();
@@ -3801,7 +3802,7 @@ mod tests {
         );
         append_payload.push(record2);
 
-        let result2 = openobserve::service::enrichment_table::save_enrichment_data(
+        let result2 = exposedobserve::service::enrichment_table::save_enrichment_data(
             org_id,
             table_name,
             append_payload,
@@ -3811,7 +3812,7 @@ mod tests {
         assert!(result2.is_ok());
 
         // Verify schema still exists and is valid
-        let schema_exists = openobserve::service::schema::stream_schema_exists(
+        let schema_exists = exposedobserve::service::schema::stream_schema_exists(
             org_id,
             table_name,
             config::meta::stream::StreamType::EnrichmentTables,
@@ -3823,7 +3824,7 @@ mod tests {
 
         // Get the meta table stats for enrichment table
         let meta_table_stats_second =
-            openobserve::service::db::enrichment_table::get_meta_table_stats(org_id, table_name)
+            exposedobserve::service::db::enrichment_table::get_meta_table_stats(org_id, table_name)
                 .await;
         assert!(meta_table_stats_second.is_some());
         let meta_table_stats_second = meta_table_stats_second.unwrap();
@@ -3872,7 +3873,7 @@ mod tests {
         record1.insert("age".to_string(), json::Value::String("25".to_string()));
         initial_payload.push(record1);
 
-        let result1 = openobserve::service::enrichment_table::save_enrichment_data(
+        let result1 = exposedobserve::service::enrichment_table::save_enrichment_data(
             org_id,
             table_name,
             initial_payload,
@@ -3912,7 +3913,7 @@ mod tests {
         ); // New field
         append_payload.push(record2);
 
-        let result2 = openobserve::service::enrichment_table::save_enrichment_data(
+        let result2 = exposedobserve::service::enrichment_table::save_enrichment_data(
             org_id,
             table_name,
             append_payload,

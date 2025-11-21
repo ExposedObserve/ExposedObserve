@@ -1,4 +1,5 @@
 <!-- Copyright 2023 OpenObserve Inc.
+Modifications Copyright 2025 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -25,8 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               <img
                 :src="
                   store.state.theme == 'dark'
-                    ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-                    : getImageURL('images/common/openobserve_latest_light_2.svg')
+                    ? getImageURL('images/eo/eo-logo.svg')
+                    : getImageURL('images/eo/eo-logo.svg')
                 "
                 class="logo"
                 width="220"
@@ -74,7 +75,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             </div>
             <div class="tw:flex tw:flex-wrap tw:gap-2">
               <a
-                href="https://github.com/openobserve/openobserve/blob/main/Cargo.toml"
+                href="https://github.com/ExposedObserve/ExposedObserve/blob/master/Cargo.toml"
                 target="_blank"
                 class="link-badge"
               >
@@ -82,7 +83,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 Cargo.toml
               </a>
               <a
-                href="https://github.com/openobserve/openobserve/blob/main/web/package.json"
+                href="https://github.com/ExposedObserve/ExposedObserve/blob/master/web/package.json"
                 target="_blank"
                 class="link-badge"
               >
@@ -102,8 +103,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
           <!-- License Info -->
           <div
-            v-if="store.state.zoConfig.build_type == 'opensource' || (store.state.zoConfig.build_type == 'enterprise' && config.isCloud == 'false')"
-            class=" feature-card license-feature"
+            class="feature-card license-feature"
           >
             <div class="tw:mb-4">
               <div class="tw:flex tw:items-center tw:gap-3 tw:mb-3">
@@ -114,13 +114,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               </div>
               <p v-if="store.state.zoConfig.build_type == 'opensource'" class="feature-text">
                 {{ t("about.license_info_os_msg") }} <a
-                  href="https://github.com/openobserve/openobserve/blob/main/LICENSE"
+                  href="https://github.com/ExposedObserve/ExposedObserve/blob/master/LICENSE"
                   target="_blank"
                   class="inline-link"
                 >GNU Affero General Public License (AGPL)</a>.
-              </p>
-              <p v-if="store.state.zoConfig.build_type == 'enterprise' && config.isCloud == 'false'" class="feature-text">
-                {{ t("about.license_info_msg") }}
               </p>
             </div>
             <div class="tw:mt-4 tw:p-3 tw:rounded tw:bg-opacity-10" :class="store.state.theme === 'dark' ? 'tw:bg-blue-400' : 'tw:bg-blue-500'">
@@ -130,142 +127,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               </p>
             </div>
           </div>
-
-          <!-- Community Card (if no license card) -->
-          <div
-            v-else
-            class=" feature-card"
-          >
-            <div class="tw:mb-4" style="min-height: 120px;">
-              <div class="tw:flex tw:items-center tw:gap-3 tw:mb-3">
-                <div class="icon-wrapper" :class="store.state.theme === 'dark' ? 'icon-wrapper-dark' : 'icon-wrapper-light'">
-                  <q-icon name="groups" size="24px" />
-                </div>
-                <h3 class="feature-title">{{ t("about.community_lbl") }}</h3>
-              </div>
-              <p class="feature-text">
-                {{ t("about.community_msg") }}
-              </p>
-            </div>
-            <div class="tw:flex tw:flex-wrap tw:gap-2">
-              <a href="https://github.com/openobserve/openobserve" target="_blank" class="link-badge">
-                <q-icon name="code" size="16px" class="tw:mr-1" />
-                GitHub
-              </a>
-              <a href="https://openobserve.ai" target="_blank" class="link-badge">
-                <q-icon name="language" size="16px" class="tw:mr-1" />
-                Website
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Enterprise License Details Section -->
-        <div v-if="config.isEnterprise == 'true' && config.isCloud === 'false'" class="tw:mt-4">
-          <div class="feature-card">
-            <div class="tw:flex tw:items-center tw:justify-between tw:mb-4">
-              <div class="tw:flex tw:items-center tw:gap-3">
-                <div class="icon-wrapper" :class="store.state.theme === 'dark' ? 'icon-wrapper-dark' : 'icon-wrapper-light'">
-                  <q-icon name="workspace_premium" size="24px" />
-                </div>
-                <h3 class="feature-title">{{ t("about.ent_lincese_detail_lbl") }}</h3>
-              </div>
-              <q-btn
-                no-caps
-                :label="t('about.manage_license')"
-                @click="navigateToLicense"
-                size="sm"
-                class="o2-primary-button"
-              />
-            </div>
-
-            <div v-if="loadingLicense" class="tw:text-center tw:py-8">
-              <q-spinner size="40px" color="primary" />
-              <div class="tw:mt-3 tw:text-sm tw:opacity-70">{{ t("about.loading_license_info") }}</div>
-            </div>
-
-            <div v-else-if="!licenseData || !licenseData.license" class="tw:py-4">
-              <div class="tw:flex tw:items-start tw:gap-3 tw:p-4 tw:rounded tw:bg-opacity-10" :class="store.state.theme === 'dark' ? 'tw:bg-yellow-400' : 'tw:bg-yellow-500'">
-                <q-icon name="warning" size="24px" class="tw:text-yellow-500" />
-                <div>
-                  <div class="tw:font-semibold tw:mb-1">{{ t("about.no_license_installed_lbl") }}</div>
-                  <p class="tw:text-sm tw:mb-2 tw:opacity-80">
-                    {{ t("about.no_license_installed_msg") }}
-                  </p>
-                  <div v-if="licenseData && licenseData.installation_id" class="tw:text-xs tw:opacity-70 tw:mb-2">
-                    {{ t("about.installation_id_lbl") }}: <code class="tw:px-2 tw:py-1 tw:rounded tw:bg-black tw:bg-opacity-10">{{ licenseData.installation_id }}</code>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else>
-              <div class="tw:grid tw:grid-cols-1 md:tw:grid-cols-2 tw:gap-4">
-                <div>
-                  <q-markup-table flat bordered dense class="compact-table">
-                    <tbody>
-                      <tr>
-                        <td class="tw:font-semibold">{{ t("about.lincese_id_lbl") }}</td>
-                        <td>{{ licenseData.license.license_id }}</td>
-                      </tr>
-                      <tr>
-                        <td class="tw:font-semibold">{{ t("about.status_lbl") }}</td>
-                        <td>
-                          <q-badge :color="licenseData?.expired ? 'red' : 'green'">
-                            {{ licenseData?.expired ? t("about.expired_lbl") : t("about.active_lbl") }}
-                          </q-badge>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="tw:font-semibold">{{ t("about.create_at_lbl") }}</td>
-                        <td>{{ formatLicenseDate(licenseData.license.created_at) }}</td>
-                      </tr>
-                      <tr>
-                        <td class="tw:font-semibold">{{ t("about.expires_at_lbl") }}</td>
-                        <td>
-                          <div class="tw:flex tw:items-center tw:justify-start tw:gap-4">
-                            <span>{{ formatLicenseDate(licenseData.license.expires_at) }}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </q-markup-table>
-                </div>
-
-                <div>
-                  <q-markup-table flat bordered dense class="compact-table">
-                    <thead>
-                      <tr>
-                        <th colspan="2" class="tw:text-center tw:font-semibold">{{ t("about.usage_limits") }}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td class="tw:font-semibold">{{ t("about.ingestion_type") }}</td>
-                        <td>{{ !licenseData?.expired && licenseData.license.limits?.Ingestion?.typ ? licenseData.license.limits.Ingestion.typ : 'PerDayCount' }}</td>
-                      </tr>
-                      <tr>
-                        <td class="tw:font-semibold">{{ t("about.ingestion_limit") }}</td>
-                        <td>{{ !licenseData?.expired && licenseData.license.limits?.Ingestion?.value ? `${licenseData.license.limits.Ingestion.value} GB / day` : '100 GB / day' }}</td>
-                      </tr>
-                      <tr v-if="licenseData.ingestion_used !== undefined">
-                        <td class="tw:font-semibold">{{ t("about.today_usage") }}</td>
-                        <td>
-                          <span :class="licenseData.ingestion_used > 90 ? 'tw:text-red-500 tw:font-bold' : licenseData.ingestion_used > 70 ? 'tw:text-orange-500' : ''">
-                            {{ licenseData.ingestion_used.toFixed(2) }}%
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </q-markup-table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Feature Comparison Table -->
-        <div class="tw:mt-6 tw:mb-[20px]" v-if="config.isCloud === 'false'">
-          <FeatureComparisonTable />
         </div>
       </div>
     </div>

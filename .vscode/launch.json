@@ -5,11 +5,45 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "debug front-end",
+      "url": "http://localhost:4000",
+      "webRoot": "${workspaceFolder}/web"
+    },
+    {
       "type": "lldb",
       "request": "launch",
       "name": "Debug executable 'openobserve' (server)",
       "cargo": {
-        "args": ["build", "--bin=openobserve", "--package=openobserve"],
+        "args": [
+          "build",
+          "--bin=openobserve",
+          "--package=openobserve"
+        ],
+        "filter": {
+          "name": "openobserve",
+          "kind": "bin"
+        }
+      },
+      "env": {
+        "ZO_ROOT_USER_EMAIL": "root@example.com",
+        "ZO_ROOT_USER_PASSWORD": "Complexpass#123",
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'openobserve' (oidc)",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=openobserve",
+          "--package=openobserve",
+          "--features oidc"
+        ],
         "filter": {
           "name": "openobserve",
           "kind": "bin"
@@ -27,7 +61,12 @@
       "request": "launch",
       "name": "Debug unit tests in library 'openobserve'",
       "cargo": {
-        "args": ["test", "--no-run", "--lib", "--package=openobserve"],
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=openobserve"
+        ],
         "filter": {
           "name": "openobserve",
           "kind": "lib"
@@ -41,7 +80,11 @@
       "request": "launch",
       "name": "Debug executable 'openobserve' (bin)",
       "cargo": {
-        "args": ["build", "--bin=openobserve", "--package=openobserve"],
+        "args": [
+          "build",
+          "--bin=openobserve",
+          "--package=openobserve"
+        ],
         "filter": {
           "name": "openobserve",
           "kind": "bin"

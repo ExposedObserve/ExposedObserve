@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -44,23 +45,23 @@ macro_rules! arg {
 }
 
 fn create_cli_app() -> Command {
-    Command::new("openobserve")
+    Command::new("exposedobserve")
         .version(config::VERSION)
         .about(clap::crate_description!())
         .arg(arg!("config", 'c', "config", "Path to config file"))
         .subcommands(&[
             Command::new("reset")
-                .about("reset openobserve data")
+                .about("reset exposedobserve data")
                 .arg(arg!("component", 'c', "component", "reset data of the component: root, user, alert, dashboard, function, stream-stats", true)),
             Command::new("import")
-                .about("import openobserve data").args(dataArgs()),
+                .about("import exposedobserve data").args(dataArgs()),
             Command::new("export")
-                .about("export openobserve data").args(dataArgs()),
+                .about("export exposedobserve data").args(dataArgs()),
             Command::new("view")
-                .about("view openobserve data")
+                .about("view exposedobserve data")
                 .arg(arg!("component", 'c', "component", "view data of the component: version, user")),
             Command::new("init-dir")
-                .about("init openobserve data dir")
+                .about("init exposedobserve data dir")
                 .arg(arg!("path", 'p', "path", "init this path as data root dir")),
             Command::new("init-db")
                     .about("init openobserve database tables"),
@@ -540,7 +541,7 @@ mod tests {
     fn test_cli_app_creation() {
         // Test that the CLI app can be created without errors
         let app = create_test_app();
-        assert_eq!(app.get_name(), "openobserve");
+        assert_eq!(app.get_name(), "exposedobserve");
         assert!(app.get_subcommands().count() > 0);
     }
 
@@ -548,7 +549,7 @@ mod tests {
     fn test_reset_command_parsing() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "reset", "--component", "user"])
+            .try_get_matches_from(["exposedobserve", "reset", "--component", "user"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "reset");
@@ -559,7 +560,7 @@ mod tests {
     fn test_reset_command_invalid_component() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "reset", "--component", "invalid"])
+            .try_get_matches_from(["exposedobserve", "reset", "--component", "invalid"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "reset");
@@ -573,7 +574,7 @@ mod tests {
     fn test_view_command_parsing() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "view", "--component", "version"])
+            .try_get_matches_from(["exposedobserve", "view", "--component", "version"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "view");
@@ -587,7 +588,7 @@ mod tests {
     fn test_init_dir_command_parsing() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "init-dir", "--path", "/tmp/test"])
+            .try_get_matches_from(["exposedobserve", "init-dir", "--path", "/tmp/test"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "init-dir");
@@ -599,7 +600,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "migrate-file-list",
                 "--from",
                 "sqlite",
@@ -618,7 +619,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "migrate-meta",
                 "--from",
                 "sqlite",
@@ -636,7 +637,7 @@ mod tests {
     fn test_delete_parquet_command_parsing() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "delete-parquet", "--file", "test.parquet"])
+            .try_get_matches_from(["exposedobserve", "delete-parquet", "--file", "test.parquet"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "delete-parquet");
@@ -657,7 +658,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "delete-parquet",
                 "--account",
                 "test-account",
@@ -682,7 +683,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "recover-file-list",
                 "--account",
                 "test-account",
@@ -708,7 +709,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "recover-file-list",
                 "--account",
                 "test-account",
@@ -734,7 +735,7 @@ mod tests {
     fn test_node_command_parsing() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "node", "offline"])
+            .try_get_matches_from(["exposedobserve", "node", "offline"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "node");
@@ -746,7 +747,7 @@ mod tests {
     fn test_node_list_command() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "node", "list"])
+            .try_get_matches_from(["exposedobserve", "node", "list"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "node");
@@ -759,7 +760,7 @@ mod tests {
     fn test_node_list_with_metrics() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "node", "list", "--metrics"])
+            .try_get_matches_from(["exposedobserve", "node", "list", "--metrics"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "node");
@@ -773,7 +774,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "sql",
                 "--execute",
                 "SELECT * FROM logs",
@@ -800,7 +801,7 @@ mod tests {
     fn test_sql_command_defaults() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "sql", "--execute", "SELECT * FROM logs"])
+            .try_get_matches_from(["exposedobserve", "sql", "--execute", "SELECT * FROM logs"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "sql");
@@ -818,7 +819,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "test",
                 "file_list",
                 "--mode",
@@ -858,7 +859,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "test",
                 "file_list",
                 "--mode",
@@ -895,7 +896,7 @@ mod tests {
     fn test_parse_id_command_parsing() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "parse-id", "--id", "123456789"])
+            .try_get_matches_from(["exposedobserve", "parse-id", "--id", "123456789"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "parse-id");
@@ -907,7 +908,7 @@ mod tests {
         let app = create_test_app();
         let matches = app
             .try_get_matches_from([
-                "openobserve",
+                "exposedobserve",
                 "consistent-hash",
                 "--file",
                 "file1.txt",
@@ -925,7 +926,7 @@ mod tests {
     fn test_consistent_hash_single_file() {
         let app = create_test_app();
         let matches = app
-            .try_get_matches_from(["openobserve", "consistent-hash", "--file", "file1.txt"])
+            .try_get_matches_from(["exposedobserve", "consistent-hash", "--file", "file1.txt"])
             .unwrap();
         let (name, sub_matches) = matches.subcommand().unwrap();
         assert_eq!(name, "consistent-hash");
@@ -936,21 +937,21 @@ mod tests {
     #[test]
     fn test_no_subcommand() {
         let app = create_test_app();
-        let matches = app.try_get_matches_from(["openobserve"]).unwrap();
+        let matches = app.try_get_matches_from(["exposedobserve"]).unwrap();
         assert!(matches.subcommand().is_none());
     }
 
     #[test]
     fn test_invalid_subcommand() {
         let app = create_test_app();
-        let result = app.try_get_matches_from(["openobserve", "invalid-command"]);
+        let result = app.try_get_matches_from(["exposedobserve", "invalid-command"]);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_missing_required_argument() {
         let app = create_test_app();
-        let result = app.try_get_matches_from(["openobserve", "migrate-meta"]);
+        let result = app.try_get_matches_from(["exposedobserve", "migrate-meta"]);
         assert!(result.is_err());
     }
 

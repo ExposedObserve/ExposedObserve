@@ -376,7 +376,7 @@
     "frustrationCount": "フラストレーション"
   },
   "about": {
-    "name": "OpenObserve",
+    "name": "ExposedObserve",
     "introduction": "オブザーバビリティをもっとシンプルに。",
     "version": "バージョン",
     "commitHash": "コミットハッシュ",
