@@ -274,7 +274,7 @@
     "location": "Location"
   },
   "about": {
-    "name": "OpenObserve",
+    "name": "ExposedObserve",
     "introduction": "Observability simplified.",
     "version": "Version",
     "commitHash": "Commit Hash",

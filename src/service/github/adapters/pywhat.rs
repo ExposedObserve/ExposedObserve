@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -84,7 +85,7 @@ pub struct PatternExamples {
     pub invalid: Vec<String>,
 }
 
-/// OpenObserve built-in pattern format (for API response)
+/// ExposedObserve built-in pattern format (for API response)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct BuiltInPatternResponse {
     pub name: String,

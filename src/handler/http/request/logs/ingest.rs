@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -321,7 +322,7 @@ pub async fn json(
     summary = "Ingest logs from AWS Kinesis Firehose",
     description = "Ingests log data from AWS Kinesis Data Firehose in the native Kinesis format. This endpoint handles \
                    the specific request/response structure expected by Kinesis Firehose, making it seamless to \
-                   stream AWS CloudWatch logs and other AWS services directly into OpenObserve.",
+                   stream AWS CloudWatch logs and other AWS services directly into ExposedObserve.",
     security(
         ("Authorization"= [])
     ),

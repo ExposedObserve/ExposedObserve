@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -142,7 +143,7 @@ async fn migrate_pipelines() -> Result<(), anyhow::Error> {
                     .collect::<Vec<_>>();
                 let pl_id = ider::uuid();
                 let name = old_pipe.name.clone();
-                let description = "This pipeline was generated from previous found prior to OpenObserve v0.13.1. Please check and confirm before enabling it manually".to_string();
+                let description = "This pipeline was generated from previous found prior to ExposedObserve v0.13.1. Please check and confirm before enabling it manually".to_string();
                 let pipeline = Pipeline {
                     id: pl_id,
                     version: 0,
@@ -182,7 +183,7 @@ async fn migrate_pipelines() -> Result<(), anyhow::Error> {
                 );
                 let pl_id = ider::uuid();
                 let name = old_pipe.name.clone();
-                let description = "This pipeline was generated from previous found prior to OpenObserve v0.12.2. Please check and confirm before enabling it manually".to_string();
+                let description = "This pipeline was generated from previous found prior to ExposedObserve v0.12.2. Please check and confirm before enabling it manually".to_string();
                 Pipeline {
                     id: pl_id,
                     version: 0,
@@ -313,7 +314,7 @@ async fn migrate_pipelines() -> Result<(), anyhow::Error> {
                 "input".to_string(),
             );
             let pl_id = ider::uuid();
-            let description = "This pipeline was generated based on Function x Stream Associations found prior to OpenObserve v0.12.2. Please check the correctness of the pipeline and enabling manually".to_string();
+            let description = "This pipeline was generated based on Function x Stream Associations found prior to ExposedObserve v0.12.2. Please check the correctness of the pipeline and enabling manually".to_string();
             Pipeline {
                 id: pl_id,
                 version: 0,

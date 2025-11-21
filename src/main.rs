@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -25,7 +26,13 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use actix_web::{App, HttpServer, dev::ServerHandle, http::KeepAlive, middleware, web};
+use actix_web::{
+    App, HttpServer,
+    dev::ServerHandle,
+    http::KeepAlive,
+    middleware::{self},
+    web,
+};
 use actix_web_opentelemetry::RequestTracing;
 use arrow_flight::flight_service_server::FlightServiceServer;
 use config::{
@@ -34,7 +41,7 @@ use config::{
     utils::size::bytes_to_human_readable,
 };
 use log::LevelFilter;
-use openobserve::{
+use exposedobserve::{
     cli::basic::cli,
     common::{
         infra::{self as common_infra, cluster},
@@ -99,7 +106,7 @@ use tracing_subscriber::Registry;
 use {
     config::Config,
     o2_enterprise::enterprise::{ai, common::config::O2Config},
-    openobserve::handler::http::{
+    exposedobserve::handler::http::{
         auth::script_server::validator as script_server_validator, request::script_server,
     },
     utoipa::OpenApi,
@@ -224,7 +231,7 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     };
 
-    log::info!("Starting OpenObserve {}", config::VERSION);
+    log::info!("Starting ExposedObserve {}", config::VERSION);
     log::info!(
         "System info: CPU cores {}, MEM total {}, Disk total {}, free {}",
         cfg.limit.real_cpu_num,
@@ -275,6 +282,12 @@ async fn main() -> Result<(), anyhow::Error> {
                 job_init_tx.send(false).ok();
                 panic!("config init failed: {e}");
             }
+            // init oidc
+            #[cfg(feature = "oidc")]
+            if let Err(e) = oidc::init().await {
+                job_init_tx.send(false).ok();
+                panic!("Oidc init failed: {e}");
+            }
 
             // db related inits
             if let Err(e) = migration::init_db().await {
@@ -316,12 +329,12 @@ async fn main() -> Result<(), anyhow::Error> {
             #[cfg(feature = "enterprise")]
             if cfg.service_graph.enabled {
                 log::info!("Initializing service graph background workers");
-                openobserve::service::traces::service_graph::init_background_workers();
+                exposedobserve::service::traces::service_graph::init_background_workers();
             }
 
             // Register job runtime for metrics collection
             if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                openobserve::service::runtime_metrics::register_runtime("job".to_string(), handle);
+                exposedobserve::service::runtime_metrics::register_runtime("job".to_string(), handle);
             }
 
             job_init_tx.send(true).ok();
@@ -366,7 +379,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .expect("grpc runtime init failed");
 
         // Register gRPC runtime for metrics collection
-        openobserve::service::runtime_metrics::register_runtime(
+        exposedobserve::service::runtime_metrics::register_runtime(
             "grpc".to_string(),
             rt.handle().clone(),
         );
@@ -390,11 +403,11 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Register main HTTP runtime for metrics collection
     if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        openobserve::service::runtime_metrics::register_runtime("http".to_string(), handle);
+        exposedobserve::service::runtime_metrics::register_runtime("http".to_string(), handle);
     }
 
     // Start runtime metrics collector
-    openobserve::service::runtime_metrics::start_metrics_collector().await;
+    exposedobserve::service::runtime_metrics::start_metrics_collector().await;
 
     // let node online
     let _ = cluster::set_online().await;
@@ -410,7 +423,7 @@ async fn main() -> Result<(), anyhow::Error> {
     if cfg.common.telemetry_enabled {
         tokio::task::spawn(async move {
             meta::telemetry::Telemetry::new()
-                .send_track_event("OpenObserve - Starting server", None, true, false)
+                .send_track_event("ExposedObserve - Starting server", None, true, false)
                 .await;
         });
     }
@@ -476,13 +489,7 @@ async fn main() -> Result<(), anyhow::Error> {
     };
 
     // init http server
-    if !cfg.common.tracing_enabled && cfg.common.tracing_search_enabled {
-        if let Err(e) = init_http_server_without_tracing().await {
-            log::error!("HTTP server runs failed: {e}");
-        }
-    } else if let Err(e) = init_http_server().await {
-        log::error!("HTTP server runs failed: {e}");
-    }
+    init_http_srv().await;
     log::info!("HTTP server stopped");
 
     // stop tracing
@@ -513,7 +520,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // stop telemetry
     if cfg.common.telemetry_enabled {
         meta::telemetry::Telemetry::new()
-            .send_track_event("OpenObserve - Server stopped", None, true, true)
+            .send_track_event("ExposedObserve - Server stopped", None, true, true)
             .await;
     }
 
@@ -566,6 +573,447 @@ async fn main() -> Result<(), anyhow::Error> {
 
     log::info!("server stopped");
 
+    Ok(())
+}
+
+async fn init_http_srv() -> Result<(), anyhow::Error> {
+    let cfg: Arc<config::Config> = get_config();
+    let thread_id: Arc<AtomicU16> = Arc::new(AtomicU16::new(0));
+    let haddr: SocketAddr = if cfg.http.ipv6_enabled {
+        format!("[::]:{}", cfg.http.port).parse()?
+    } else {
+        let ip = if !cfg.http.addr.is_empty() {
+            cfg.http.addr.clone()
+        } else {
+            "0.0.0.0".to_string()
+        };
+        format!("{}:{}", ip, cfg.http.port).parse()?
+    };
+    #[cfg(not(feature = "oidc"))]
+    if !cfg.common.tracing_enabled && cfg.common.tracing_search_enabled {
+        init_http_server()
+            .await
+            .inspect_err(|e| log::error!("HTTP server runs failed: {e}"))
+    } else {
+        init_http_server_without_tracing()
+            .await
+            .inspect_err(|e| log::error!("HTTP server runs failed: {e}"))
+    }
+    #[cfg(feature = "oidc")]
+    if !cfg.common.tracing_enabled && cfg.common.tracing_search_enabled {
+        let store_type = &oidc::config::get_oidc_config()
+            .session_config
+            .session_store_type;
+        match store_type {
+            oidc::config::SessionStoreType::Cookie => {
+                init_http_server_with_cookie_store(cfg, thread_id, haddr)
+                    .await
+                    .inspect_err(|e| log::error!("HTTP server runs failed: {e}"))
+            }
+            oidc::config::SessionStoreType::Redis => {
+                init_http_server_with_redis_store(cfg, thread_id, haddr)
+                    .await
+                    .inspect_err(|e| log::error!("HTTP server runs failed: {e}"))
+            }
+        }
+    } else {
+        let store_type = &oidc::config::get_oidc_config()
+            .session_config
+            .session_store_type;
+        match store_type {
+            oidc::config::SessionStoreType::Cookie => {
+                init_http_server_without_tracing_with_cookie_store(cfg, thread_id, haddr)
+                    .await
+                    .inspect_err(|e| log::error!("HTTP server runs failed: {e}"))
+            }
+            oidc::config::SessionStoreType::Redis => {
+                init_http_server_without_tracing_with_redis_store(cfg, thread_id, haddr)
+                    .await
+                    .inspect_err(|e| log::error!("HTTP server runs failed: {e}"))
+            }
+        }
+    }
+}
+
+async fn init_http_server_without_tracing_with_redis_store(
+    cfg: Arc<config::Config>,
+    thread_id: Arc<AtomicU16>,
+    haddr: SocketAddr,
+) -> Result<(), anyhow::Error> {
+    let session_config = &oidc::config::get_oidc_config().session_config;
+    let store = oidc::session::get_redis_session_store(session_config).await;
+    let server = HttpServer::new(move || {
+        let cfg = get_config();
+        let local_id = thread_id.load(Ordering::SeqCst) as usize;
+        if cfg.limit.mem_table_bucket_num > 1 {
+            thread_id.fetch_add(1, Ordering::SeqCst);
+        }
+
+        let scheme = if cfg.http.tls_enabled {
+            "HTTPS"
+        } else {
+            "HTTP"
+        };
+        log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
+
+        let mut app = App::new().wrap(oidc::session::get_redis_session_middleware(store.clone()));
+
+        if config::cluster::LOCAL_NODE.is_router() {
+            let http_client =
+                router::http::create_http_client().expect("Failed to create http tls client");
+            let factory = web::scope(&cfg.common.base_uri);
+            #[cfg(feature = "enterprise")]
+            let factory = factory.wrap(
+                o2_ratelimit::middleware::RateLimitController::new_with_extractor(Some(
+                    router::ratelimit::resource_extractor::default_extractor,
+                )),
+            );
+
+            app = app
+                .service(
+                    // if `cfg.common.base_uri` is empty, scope("") still works as expected.
+                    factory
+                        .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                        .service(get_metrics)
+                        .service(router::http::config)
+                        .service(router::http::config_paths)
+                        .service(router::http::api)
+                        .service(router::http::aws)
+                        .service(router::http::gcp)
+                        .service(router::http::rum)
+                        .configure(get_basic_routes)
+                        .configure(get_proxy_routes),
+                )
+                .app_data(web::Data::new(http_client))
+        } else {
+            app = app.service({
+                let scope = web::scope(&cfg.common.base_uri)
+                    .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                    .service(get_metrics)
+                    .configure(get_config_routes)
+                    .configure(get_service_routes)
+                    .configure(get_other_service_routes)
+                    .configure(get_basic_routes)
+                    .configure(get_proxy_routes);
+                #[cfg(feature = "enterprise")]
+                let scope = scope.configure(get_script_server_routes);
+                scope
+            })
+        }
+        app.app_data(web::JsonConfig::default().limit(cfg.limit.req_json_limit))
+            .app_data(web::PayloadConfig::new(cfg.limit.req_payload_limit)) // size is in bytes
+            .app_data(web::Data::new(local_id))
+            .wrap(middlewares::Compress::default())
+            .wrap(middleware::Logger::new(&get_http_access_log_format()
+            ))
+    })
+    .keep_alive(if cfg.limit.http_keep_alive_disabled {
+        KeepAlive::Disabled
+    } else {
+        KeepAlive::Timeout(Duration::from_secs(max(1, cfg.limit.http_keep_alive)))
+    })
+    .client_request_timeout(Duration::from_secs(max(1, cfg.limit.http_request_timeout)))
+    .shutdown_timeout(max(1, cfg.limit.http_shutdown_timeout));
+    let server = if cfg.http.tls_enabled {
+        let sc = http_tls_config()?;
+        server.bind_rustls_0_23(haddr, sc)?
+    } else {
+        server.bind(haddr)?
+    };
+
+    let server = server
+        .workers(cfg.limit.http_worker_num)
+        .worker_max_blocking_threads(cfg.limit.http_worker_max_blocking)
+        .disable_signals()
+        .run();
+    let handle = server.handle();
+    tokio::task::spawn(graceful_shutdown(handle));
+    server.await?;
+    Ok(())
+}
+
+async fn init_http_server_without_tracing_with_cookie_store(
+    cfg: Arc<config::Config>,
+    thread_id: Arc<AtomicU16>,
+    haddr: SocketAddr,
+) -> Result<(), anyhow::Error> {
+    let server = HttpServer::new(move || {
+        let cfg = get_config();
+        let local_id = thread_id.load(Ordering::SeqCst) as usize;
+        if cfg.limit.mem_table_bucket_num > 1 {
+            thread_id.fetch_add(1, Ordering::SeqCst);
+        }
+
+        let scheme = if cfg.http.tls_enabled {
+            "HTTPS"
+        } else {
+            "HTTP"
+        };
+        log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
+
+        let mut app = App::new().wrap(oidc::session::get_cookie_session_middleware());
+
+        if config::cluster::LOCAL_NODE.is_router() {
+            let http_client =
+                router::http::create_http_client().expect("Failed to create http tls client");
+            let factory = web::scope(&cfg.common.base_uri);
+            #[cfg(feature = "enterprise")]
+            let factory = factory.wrap(
+                o2_ratelimit::middleware::RateLimitController::new_with_extractor(Some(
+                    router::ratelimit::resource_extractor::default_extractor,
+                )),
+            );
+
+            app = app
+                .service(
+                    // if `cfg.common.base_uri` is empty, scope("") still works as expected.
+                    factory
+                        .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                        .service(get_metrics)
+                        .service(router::http::config)
+                        .service(router::http::config_paths)
+                        .service(router::http::api)
+                        .service(router::http::aws)
+                        .service(router::http::gcp)
+                        .service(router::http::rum)
+                        .configure(get_basic_routes)
+                        .configure(get_proxy_routes),
+                )
+                .app_data(web::Data::new(http_client))
+        } else {
+            app = app.service({
+                let scope = web::scope(&cfg.common.base_uri)
+                    .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                    .service(get_metrics)
+                    .configure(get_config_routes)
+                    .configure(get_service_routes)
+                    .configure(get_other_service_routes)
+                    .configure(get_basic_routes)
+                    .configure(get_proxy_routes);
+                #[cfg(feature = "enterprise")]
+                let scope = scope.configure(get_script_server_routes);
+                scope
+            })
+        }
+        app.app_data(web::JsonConfig::default().limit(cfg.limit.req_json_limit))
+            .app_data(web::PayloadConfig::new(cfg.limit.req_payload_limit)) // size is in bytes
+            .app_data(web::Data::new(local_id))
+            .wrap(middlewares::Compress::default())
+            .wrap(middleware::Logger::new(&get_http_access_log_format()
+            ))
+    })
+    .keep_alive(if cfg.limit.http_keep_alive_disabled {
+        KeepAlive::Disabled
+    } else {
+        KeepAlive::Timeout(Duration::from_secs(max(1, cfg.limit.http_keep_alive)))
+    })
+    .client_request_timeout(Duration::from_secs(max(1, cfg.limit.http_request_timeout)))
+    .shutdown_timeout(max(1, cfg.limit.http_shutdown_timeout));
+    let server = if cfg.http.tls_enabled {
+        let sc = http_tls_config()?;
+        server.bind_rustls_0_23(haddr, sc)?
+    } else {
+        server.bind(haddr)?
+    };
+
+    let server = server
+        .workers(cfg.limit.http_worker_num)
+        .worker_max_blocking_threads(cfg.limit.http_worker_max_blocking)
+        .disable_signals()
+        .run();
+    let handle = server.handle();
+    tokio::task::spawn(graceful_shutdown(handle));
+    server.await?;
+    Ok(())
+}
+
+async fn init_http_server_with_redis_store(
+    cfg: Arc<config::Config>,
+    thread_id: Arc<AtomicU16>,
+    haddr: SocketAddr,
+) -> Result<(), anyhow::Error> {
+    let session_config = &oidc::config::get_oidc_config().session_config;
+    let store = oidc::session::get_redis_session_store(session_config).await;
+    let server = HttpServer::new(move || {
+        let cfg = get_config();
+        let local_id = thread_id.load(Ordering::SeqCst) as usize;
+        if cfg.limit.mem_table_bucket_num > 1 {
+            thread_id.fetch_add(1, Ordering::SeqCst);
+        }
+        let scheme = if cfg.http.tls_enabled {
+            "HTTPS"
+        } else {
+            "HTTP"
+        };
+        log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
+
+        let mut app = App::new().wrap(oidc::session::get_redis_session_middleware(store.clone()));
+
+        if config::cluster::LOCAL_NODE.is_router() {
+            let http_client =
+                router::http::create_http_client().expect("Failed to create http tls client");
+            let factory = web::scope(&cfg.common.base_uri);
+            #[cfg(feature = "enterprise")]
+            let factory = factory.wrap(
+                o2_ratelimit::middleware::RateLimitController::new_with_extractor(Some(
+                    router::ratelimit::resource_extractor::default_extractor,
+                )),
+            );
+            app = app
+                .service(
+                    // if `cfg.common.base_uri` is empty, scope("") still works as expected.
+                    factory
+                        .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                        .service(get_metrics)
+                        .service(router::http::config)
+                        .service(router::http::config_paths)
+                        .service(router::http::api)
+                        .service(router::http::aws)
+                        .service(router::http::gcp)
+                        .service(router::http::rum)
+                        .configure(get_basic_routes)
+                        .configure(get_proxy_routes),
+                )
+                .app_data(web::Data::new(http_client))
+        } else {
+            app = app.service({
+                let scope = web::scope(&cfg.common.base_uri)
+                    .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                    .service(get_metrics)
+                    .configure(get_config_routes)
+                    .configure(get_service_routes)
+                    .configure(get_other_service_routes)
+                    .configure(get_basic_routes)
+                    .configure(get_proxy_routes);
+                #[cfg(feature = "enterprise")]
+                let scope = scope.configure(get_script_server_routes);
+                scope
+            })
+        }
+        app.app_data(web::JsonConfig::default().limit(cfg.limit.req_json_limit))
+            .app_data(web::PayloadConfig::new(cfg.limit.req_payload_limit)) // size is in bytes
+            .app_data(web::Data::new(local_id))
+            .wrap(middlewares::Compress::default())
+            .wrap(middleware::Logger::new(&get_http_access_log_format()
+            ))
+            .wrap(RequestTracing::new())
+    })
+    .keep_alive(if cfg.limit.http_keep_alive_disabled {
+        KeepAlive::Disabled
+    } else {
+        KeepAlive::Timeout(Duration::from_secs(max(1, cfg.limit.http_keep_alive)))
+    })
+    .client_request_timeout(Duration::from_secs(max(1, cfg.limit.http_request_timeout)))
+    .shutdown_timeout(max(1, cfg.limit.http_shutdown_timeout));
+    let server = if cfg.http.tls_enabled {
+        let sc = http_tls_config()?;
+        server.bind_rustls_0_23(haddr, sc)?
+    } else {
+        server.bind(haddr)?
+    };
+
+    let server = server
+        .workers(cfg.limit.http_worker_num)
+        .worker_max_blocking_threads(cfg.limit.http_worker_max_blocking)
+        .disable_signals()
+        .run();
+    let handle = server.handle();
+    tokio::task::spawn(graceful_shutdown(handle));
+    server.await?;
+    Ok(())
+}
+
+async fn init_http_server_with_cookie_store(
+    cfg: Arc<config::Config>,
+    thread_id: Arc<AtomicU16>,
+    haddr: SocketAddr,
+) -> Result<(), anyhow::Error> {
+    let server = HttpServer::new(move || {
+        let cfg = get_config();
+        let local_id = thread_id.load(Ordering::SeqCst) as usize;
+        if cfg.limit.mem_table_bucket_num > 1 {
+            thread_id.fetch_add(1, Ordering::SeqCst);
+        }
+        let scheme = if cfg.http.tls_enabled {
+            "HTTPS"
+        } else {
+            "HTTP"
+        };
+        log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
+
+        let mut app = App::new().wrap(oidc::session::get_cookie_session_middleware());
+
+        if config::cluster::LOCAL_NODE.is_router() {
+            let http_client =
+                router::http::create_http_client().expect("Failed to create http tls client");
+            let factory = web::scope(&cfg.common.base_uri);
+            #[cfg(feature = "enterprise")]
+            let factory = factory.wrap(
+                o2_ratelimit::middleware::RateLimitController::new_with_extractor(Some(
+                    router::ratelimit::resource_extractor::default_extractor,
+                )),
+            );
+            app = app
+                .service(
+                    // if `cfg.common.base_uri` is empty, scope("") still works as expected.
+                    factory
+                        .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                        .service(get_metrics)
+                        .service(router::http::config)
+                        .service(router::http::config_paths)
+                        .service(router::http::api)
+                        .service(router::http::aws)
+                        .service(router::http::gcp)
+                        .service(router::http::rum)
+                        .configure(get_basic_routes)
+                        .configure(get_proxy_routes),
+                )
+                .app_data(web::Data::new(http_client))
+        } else {
+            app = app.service({
+                let scope = web::scope(&cfg.common.base_uri)
+                    .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
+                    .service(get_metrics)
+                    .configure(get_config_routes)
+                    .configure(get_service_routes)
+                    .configure(get_other_service_routes)
+                    .configure(get_basic_routes)
+                    .configure(get_proxy_routes);
+                #[cfg(feature = "enterprise")]
+                let scope = scope.configure(get_script_server_routes);
+                scope
+            })
+        }
+        app.app_data(web::JsonConfig::default().limit(cfg.limit.req_json_limit))
+            .app_data(web::PayloadConfig::new(cfg.limit.req_payload_limit)) // size is in bytes
+            .app_data(web::Data::new(local_id))
+            .wrap(middlewares::Compress::default())
+            .wrap(middleware::Logger::new(&get_http_access_log_format()
+            ))
+            .wrap(RequestTracing::new())
+    })
+    .keep_alive(if cfg.limit.http_keep_alive_disabled {
+        KeepAlive::Disabled
+    } else {
+        KeepAlive::Timeout(Duration::from_secs(max(1, cfg.limit.http_keep_alive)))
+    })
+    .client_request_timeout(Duration::from_secs(max(1, cfg.limit.http_request_timeout)))
+    .shutdown_timeout(max(1, cfg.limit.http_shutdown_timeout));
+    let server = if cfg.http.tls_enabled {
+        let sc = http_tls_config()?;
+        server.bind_rustls_0_23(haddr, sc)?
+    } else {
+        server.bind(haddr)?
+    };
+
+    let server = server
+        .workers(cfg.limit.http_worker_num)
+        .worker_max_blocking_threads(cfg.limit.http_worker_max_blocking)
+        .disable_signals()
+        .run();
+    let handle = server.handle();
+    tokio::task::spawn(graceful_shutdown(handle));
+    server.await?;
     Ok(())
 }
 
@@ -768,6 +1216,7 @@ async fn init_http_server() -> Result<(), anyhow::Error> {
         };
         log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
         let mut app = App::new();
+
         if config::cluster::LOCAL_NODE.is_router() {
             let http_client =
                 router::http::create_http_client().expect("Failed to create http tls client");
@@ -778,7 +1227,6 @@ async fn init_http_server() -> Result<(), anyhow::Error> {
                     router::ratelimit::resource_extractor::default_extractor,
                 )),
             );
-
             app = app
                 .service(
                     // if `cfg.common.base_uri` is empty, scope("") still works as expected.
@@ -872,6 +1320,7 @@ async fn init_http_server_without_tracing() -> Result<(), anyhow::Error> {
         log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
 
         let mut app = App::new();
+
         if config::cluster::LOCAL_NODE.is_router() {
             let http_client =
                 router::http::create_http_client().expect("Failed to create http tls client");
@@ -1098,7 +1547,7 @@ fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, anyho
 
     let mut tracer_builder = opentelemetry_sdk::trace::SdkTracerProvider::builder();
 
-    // Add main OpenObserve OTLP exporter (if general tracing is enabled)
+    // Add main ExposedObserve OTLP exporter (if general tracing is enabled)
     if cfg.common.tracing_enabled || cfg.common.tracing_search_enabled {
         tracer_builder = if cfg.common.otel_otlp_grpc_url.is_empty() {
             tracer_builder.with_span_processor(
@@ -1158,7 +1607,7 @@ fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, anyho
             .build(),
         )
         };
-        log::info!("Main OpenObserve OTLP exporter configured");
+        log::info!("Main ExposedObserve OTLP exporter configured");
     }
 
     // Handle AI tracing (enterprise feature)
@@ -1168,14 +1617,14 @@ fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, anyho
         let o2_cfg = get_o2_config();
 
         // If AI tracing is enabled but general tracing is NOT enabled,
-        // we need to add OpenObserve OTLP exporter for AI traces
+        // we need to add ExposedObserve OTLP exporter for AI traces
         if o2_cfg.ai.traces_enabled
             && !cfg.common.tracing_enabled
             && !cfg.common.tracing_search_enabled
         {
-            log::info!("AI tracing enabled independently - configuring OpenObserve OTLP exporter");
+            log::info!("AI tracing enabled independently - configuring ExposedObserve OTLP exporter");
 
-            // Add OpenObserve exporter for AI traces
+            // Add ExposedObserve exporter for AI traces
             if !cfg.common.otel_otlp_url.is_empty() {
                 let mut headers = HashMap::new();
                 headers.insert(
@@ -1212,7 +1661,7 @@ fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, anyho
 
                 tracer_builder = tracer_builder.with_span_processor(filtered_processor);
                 log::info!(
-                    "AI traces (ai.* spans only) will be sent to OpenObserve: {}",
+                    "AI traces (ai.* spans only) will be sent to ExposedObserve: {}",
                     cfg.common.otel_otlp_url
                 );
             } else if !cfg.common.otel_otlp_grpc_url.is_empty() {
@@ -1243,7 +1692,7 @@ fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, anyho
 
                 tracer_builder = tracer_builder.with_span_processor(filtered_processor);
                 log::info!(
-                    "AI traces (ai.* spans only) will be sent to OpenObserve (gRPC): {}",
+                    "AI traces (ai.* spans only) will be sent to ExposedObserve (gRPC): {}",
                     cfg.common.otel_otlp_grpc_url
                 );
             } else {
@@ -1410,7 +1859,7 @@ async fn init_script_server() -> Result<(), anyhow::Error> {
     // stop telemetry
     if cfg.common.telemetry_enabled {
         meta::telemetry::Telemetry::new()
-            .send_track_event("OpenObserve - Server stopped", None, true, true)
+            .send_track_event("ExposedObserve - Server stopped", None, true, true)
             .await;
     }
 
@@ -1451,7 +1900,7 @@ async fn init_enterprise() -> Result<(), anyhow::Error> {
     {
         log::info!("init super cluster");
         o2_enterprise::enterprise::super_cluster::kv::init().await?;
-        openobserve::super_cluster_queue::init().await?;
+        exposedobserve::super_cluster_queue::init().await?;
     }
 
     // Initialize OpenAPI spec for AI and MCP modules
@@ -1471,7 +1920,7 @@ async fn init_enterprise() -> Result<(), anyhow::Error> {
 
     o2_enterprise::enterprise::pipeline::pipeline_file_server::PipelineFileServer::run().await?;
     if o2cfg.rate_limit.rate_limit_enabled && o2_openfga::config::get_config().enabled {
-        o2_ratelimit::init(openobserve::handler::http::router::openapi::openapi_info().await)
+        o2_ratelimit::init(exposedobserve::handler::http::router::openapi::openapi_info().await)
             .await?;
     }
 
@@ -1721,10 +2170,10 @@ mod tests {
     #[tokio::test]
     async fn test_telemetry_event_creation() {
         // Test telemetry event patterns used in the main function
-        let event_name = "OpenObserve - Starting server";
-        let stop_event = "OpenObserve - Server stopped";
+        let event_name = "ExposedObserve - Starting server";
+        let stop_event = "ExposedObserve - Server stopped";
 
-        assert!(event_name.contains("OpenObserve"));
+        assert!(event_name.contains("ExposedObserve"));
         assert!(event_name.contains("Starting"));
         assert!(stop_event.contains("Server stopped"));
 

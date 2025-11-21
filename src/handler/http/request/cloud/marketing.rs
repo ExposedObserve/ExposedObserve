@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -80,7 +81,7 @@ pub async fn handle_new_attribution_event(
     let mut telemetry_instance = telemetry::Telemetry::new();
     telemetry_instance
         .send_track_event(
-            "OpenObserve - New user attribution",
+            "ExposedObserve - New user attribution",
             Some(segment_event_data.clone()),
             false,
             false,
@@ -89,7 +90,7 @@ pub async fn handle_new_attribution_event(
 
     telemetry_instance
         .send_keyevent_track_event(
-            "OpenObserve - New user attribution",
+            "ExposedObserve - New user attribution",
             Some(segment_event_data),
             false,
             false,

@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -47,7 +48,7 @@ use super::request::*;
 use crate::{
     common::meta::{middleware_data::RumExtraData, proxy::PathParamProxyURL},
     handler::http::{
-        request::search::search_inspector, router::middlewares::blocked_orgs_middleware,
+        auth::ext_validator, request::search::search_inspector, router::middlewares::blocked_orgs_middleware,
     },
 };
 
@@ -200,7 +201,7 @@ pub fn get_proxy_routes_inner(svc: &mut web::ServiceConfig, enable_validator: bo
         .allow_any_origin()
         .allow_any_method()
         .allow_any_header();
-
+    // TODO Oidc validator?
     if enable_validator {
         svc.service(
             web::resource("/proxy/{org_id}/{target_url:.*}")
@@ -256,14 +257,17 @@ pub fn get_basic_routes(svc: &mut web::ServiceConfig) {
             .wrap(cors.clone())
             .service(users::authentication)
             .service(users::get_presigned_url)
-            .service(users::get_auth),
+            .service(ext_auth::logout)
+            .service(ext_auth::auth)
+            .service(ext_auth::callback),
     );
-
+    #[cfg(feature = "oidc")]
+    let http_auth = HttpAuthentication::with_fn(ext_validator::root_validator);
+    #[cfg(not(feature = "oidc"))]
+    let http_auth = HttpAuthentication::with_fn(super::auth::validator::oo_validator);
     {
         let mut node_scope = web::scope("/node")
-            .wrap(HttpAuthentication::with_fn(
-                super::auth::validator::oo_validator,
-            ))
+            .wrap(http_auth)
             .wrap(cors.clone())
             .service(status::cache_status)
             .service(status::enable_node)
@@ -311,7 +315,7 @@ pub fn get_basic_routes(svc: &mut web::ServiceConfig) {
                         if path.starts_with("src/")
                             || path.starts_with("assets/")
                             || path.starts_with("monacoeditorwork/")
-                            || path.eq("favicon.ico")
+                            || path.eq("eo-logo.svg")
                         {
                             res
                         } else {
@@ -381,13 +385,16 @@ pub fn get_service_routes(svc: &mut web::ServiceConfig) {
     #[cfg(not(feature = "enterprise"))]
     let server = cfg.common.instance_name_short.to_string();
 
+    #[cfg(feature = "oidc")]
+    let http_auth = HttpAuthentication::with_fn(ext_validator::root_validator);
+    #[cfg(not(feature = "oidc"))]
+    let http_auth = HttpAuthentication::with_fn(super::auth::validator::oo_validator);
+
     #[allow(deprecated)]
     let service = web::scope("/api")
         .wrap(middleware::from_fn(blocked_orgs_middleware))
         .wrap(middleware::from_fn(audit_middleware))
-        .wrap(HttpAuthentication::with_fn(
-            super::auth::validator::oo_validator,
-        ))
+        .wrap(http_auth)
         .wrap(cors.clone())
         .wrap(middleware::DefaultHeaders::new().add(("X-Api-Node", server)))
         .service(users::list)

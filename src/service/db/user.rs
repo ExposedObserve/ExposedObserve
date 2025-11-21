@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -274,7 +275,7 @@ pub async fn watch() -> Result<(), anyhow::Error> {
                 USERS.insert(item_key.to_string(), item_value.clone());
                 if item_value.is_root {
                     // Root user must be there, it is created when
-                    // openobserve is run for the first time
+                    // ExposedObserve is run for the first time
                     let mut root = ROOT_USER.get_mut("root").unwrap();
                     root.first_name = item_value.first_name.clone();
                     root.last_name = item_value.last_name.clone();

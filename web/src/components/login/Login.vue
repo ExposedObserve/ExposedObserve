@@ -1,4 +1,5 @@
 <!-- Copyright 2023 OpenObserve Inc.
+Modifications Copyright 2025 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -57,8 +58,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
           "
           :src="
             store.state.theme == 'dark'
-              ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-              : getImageURL('images/common/openobserve_latest_light_2.svg')
+              ? getImageURL('images/eo/eo-logo.svg')
+              : getImageURL('images/eo/eo-logo.svg')
           "
         />
       </div>
@@ -73,8 +74,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
           "
           :src="
             store.state.theme == 'dark'
-              ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-              : getImageURL('images/common/openobserve_latest_light_2.svg')
+              ? getImageURL('images/eo/eo-logo.svg')
+              : getImageURL('images/eo/eo-logo.svg')
           "
         />
       </div>
@@ -239,24 +240,21 @@ export default defineComponent({
     });
 
     const showSSO = computed(() => {
-      return store.state.zoConfig.sso_enabled && config.isEnterprise === "true";
+      return store.state.zoConfig.sso_enabled;
     });
 
     const showInternalLogin = computed(() => {
       return store.state.zoConfig.native_login_enabled;
     });
 
-    const loginWithSSo = async () => {
-      try {
-        authService.get_dex_login().then((res) => {
-          if (res) {
-            window.location.href = res;
-            return;
-          }
-        });
-      } catch (error) {
-        console.error("Error during redirection:");
+    const loginWithSSo = () => {
+      let login_endpint = store.state.API_ENDPOINT + "/auth/login"
+      const redirectURI = window.sessionStorage.getItem("redirectURI");
+      if(redirectURI) {
+        login_endpint = login_endpint + "?return_to=" + redirectURI
       }
+      window.location.href = login_endpint
+      return;
     };
 
     const onSignIn = () => {

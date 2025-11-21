@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +32,7 @@ mod tests {
     #[tokio::test]
     async fn test_export_operator() {
         let args = vec![
-            "openobserve",
+            "exposedobserve",
             "--c",
             "stream",
             "--o",
@@ -58,7 +59,7 @@ mod tests {
     #[tokio::test]
     async fn test_import_operator() {
         let args = vec![
-            "openobserve",
+            "exposedobserve",
             "--c",
             "stream",
             "--o",
@@ -85,7 +86,7 @@ mod tests {
     #[tokio::test]
     async fn test_import_operator_with_time_range() {
         let args = vec![
-            "openobserve",
+            "exposedobserve",
             "--c",
             "stream",
             "--o",
@@ -116,7 +117,7 @@ mod tests {
     #[tokio::test]
     async fn test_import_operator_with_error_type() {
         let args = vec![
-            "openobserve",
+            "exposedobserve",
             "--c",
             "stream",
             "--o",

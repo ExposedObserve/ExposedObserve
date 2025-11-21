@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,3 +18,4 @@ pub mod jwt;
 pub mod script_server;
 pub mod token;
 pub mod validator;
+pub mod ext_validator;

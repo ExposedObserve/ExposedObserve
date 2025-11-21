@@ -1,28 +1,28 @@
 [package]
-description = "OpenObserve is an observability platform that allows you to capture, search, and analyze your logs, metrics, and traces."
+description = "ExposedObserve is an observability platform that allows you to capture, search, and analyze your logs, metrics, and traces."
 edition = "2024"
-homepage = "https://openobserve.ai/"
+homepage = "https://github.com/ExposedObserve/ExposedObserve"
 keywords = [
     "search",
     "log",
     "metrics",
     "traces",
     "analytics",
-    "openobserve",
+    "exposedobserve",
     "observability",
     "open source",
     "open-source",
     "opensource",
 ]
 license = "AGPL-3.0"
-name = "openobserve"
-repository = "https://github.com/openobserve/openobserve/"
+name = "exposedobserve"
+repository = "https://github.com/ExposedObserve/ExposedObserve"
 version = "0.17.0"
 publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["oidc"]
 enterprise = []
 cloud = []
 mimalloc = ["dep:mimalloc"]
@@ -30,6 +30,7 @@ jemalloc = ["dep:tikv-jemallocator"]
 profiling = ["dep:pprof"]
 pyroscope = ["dep:pyroscope", "dep:pyroscope_pprofrs"]
 tokio-console = ["dep:console-subscriber"]
+oidc = []
 
 [profile.release]
 debug = false
@@ -191,6 +192,7 @@ tokio-rustls.workspace = true
 roaring.workspace = true
 flight.workspace = true
 async-stream.workspace = true
+oidc.workspace = true
 
 [dev-dependencies]
 async-walkdir.workspace = true
@@ -208,6 +210,7 @@ members = [
     "src/proto",
     "src/report_server",
     "src/flight",
+    "src/oidc"
 ]
 resolver = "2"
 
@@ -217,6 +220,7 @@ edition = "2024"
 license = "AGPL-3.0"
 
 [workspace.dependencies]
+oidc = { path = "src/oidc" }
 config = { path = "src/config" }
 infra = { path = "src/infra" }
 ingester = { path = "src/ingester" }
@@ -233,6 +237,7 @@ actix-tls = { version = "3.5", features = [
     "rustls-0_23-native-roots",
     "rustls-0_23-webpki-roots",
 ] }
+actix-session = { version = "0.11.0", features = ["cookie-session"] }
 anyhow = "1.0"
 arc-swap = "1.7.1"
 argon2 = { version = "0.5", features = ["alloc", "password-hash"] }

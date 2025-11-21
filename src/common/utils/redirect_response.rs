@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -67,7 +68,7 @@ impl RedirectResponse {
                 <head>
                     <meta charset="utf-8">
                     <meta http-equiv="refresh" content="0;url={redirect_uri}">
-                    <title>OpenObserve Redirecting...</title>
+                    <title>ExposedObserve Redirecting...</title>
                 </head>
                 <body>
                     Redirecting to <a href="{redirect_uri}">click here</a>

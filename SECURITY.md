@@ -5,7 +5,7 @@ This security policy applies to the **ExposedObserve** fork of OpenObserve.
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in **ExposedObserve**, please report it via email to:  
-📧 mike.sauh@gmail.com
+📧 <mike.sauh@gmail.com>
 
 Do not open a public issue until it has been addressed.
 

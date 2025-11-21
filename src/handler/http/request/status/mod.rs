@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -176,7 +177,7 @@ struct Rum {
     tag = "Meta",
     operation_id = "HealthCheck",
     summary = "System health check",
-    description = "Performs a basic health check to verify that the OpenObserve service is running and responding to \
+    description = "Performs a basic health check to verify that the ExposedObserve service is running and responding to \
                    requests. Returns a simple status indicator that can be used by load balancers, monitoring systems, \
                    and orchestration platforms to determine service availability and readiness.",
     responses(
@@ -241,8 +242,8 @@ pub async fn zo_config() -> Result<HttpResponse, Error> {
     let openfga_cfg = get_openfga_config();
     #[cfg(feature = "enterprise")]
     let sso_enabled = dex_cfg.dex_enabled;
-    #[cfg(not(feature = "enterprise"))]
-    let sso_enabled = false;
+    #[cfg(feature = "oidc")]
+    let sso_enabled = true;
     #[cfg(feature = "enterprise")]
     let native_login_enabled = dex_cfg.native_login_enabled;
     #[cfg(not(feature = "enterprise"))]

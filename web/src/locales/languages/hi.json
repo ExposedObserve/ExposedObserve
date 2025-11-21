@@ -142,7 +142,7 @@
     "location": "लोकेशन"
   },
   "about": {
-    "name": "OpenObserve",
+    "name": "ExposedObserve",
     "introduction": "अवलोकनीयता सरलीकृत।",
     "version": "वर्शन",
     "commitHash": "कमिट हैश",

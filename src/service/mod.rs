@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -57,6 +58,7 @@ pub mod stream;
 pub mod tls;
 pub mod traces;
 pub mod users;
+pub mod ext_users;
 
 // format stream name
 pub async fn get_formatted_stream_name(params: StreamParams) -> Result<String> {

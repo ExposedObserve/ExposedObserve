@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -32,7 +33,7 @@ pub trait NodeInfo: Debug + Send + Sync {
     fn get_auth_token(&self) -> String;
     fn get_name(&self) -> String;
     fn get_region(&self) -> String {
-        "openobserve".to_string()
+        "exposedobserve".to_string()
     }
     fn get_cluster(&self) -> String {
         crate::config::get_cluster_name()

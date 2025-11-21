@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="107.729 147.447 248.778 248.778" width="248.778px" height="248.778px">
+  <path style="fill: none; fill-rule: nonzero; stroke-width: 15px; stroke: rgb(56, 66, 89);" d="M 128.523 258.679 C 129.327 203.554 335.934 209.868 335.934 258.679" transform="matrix(1, 0, 0, 1, 2.842170943040401e-14, 0)"/>
+  <path style="fill: none; fill-rule: nonzero; stroke-width: 15px; stroke: rgb(56, 66, 89);" d="M 128.416 284.465 C 129.22 339.59 335.827 333.276 335.827 284.465" transform="matrix(1, 0, 0, 1, 2.842170943040401e-14, 0)"/>
+  <ellipse style="stroke-width: 19px; paint-order: fill; fill-rule: nonzero; fill: none; stroke: rgb(122, 199, 195);" cx="232.557" cy="271.284" rx="49.082" ry="49.082" transform="matrix(1, 0, 0, 1, 2.842170943040401e-14, 0)"/>
+  <polyline style="fill: none; paint-order: fill; stroke-linecap: square; stroke-width: 12px; stroke: rgb(247, 57, 89);" points="126.655 271.405 197.605 271.652 215.819 228.994 233.4 271.652 250.442 311.452 264.07 271.652 337.35 271.652" transform="matrix(1, 0, 0, 1, 2.842170943040401e-14, 0)"/>
+  <rect x="107.729" y="147.447" width="248.778" height="248.778" style="fill: none;" transform="matrix(1, 0, 0, 1, 2.842170943040401e-14, 0)"/>
+</svg>

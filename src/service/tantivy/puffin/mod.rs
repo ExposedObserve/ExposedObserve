@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -76,7 +77,7 @@ pub struct BlobMetadata {
     /// The length of the blob stored in the file (after compression, if compressed)
     pub length: u64,
 
-    /// Default to ZSTD compression for OpenObserve inverted index
+    /// Default to ZSTD compression for ExposedObserve inverted index
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compression_codec: Option<CompressionCodec>,
 
