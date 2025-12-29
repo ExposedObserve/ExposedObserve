@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     lld \
     clang \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . /exposedobserve
