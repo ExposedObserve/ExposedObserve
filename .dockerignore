@@ -1,0 +1,75 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Git
+.git/
+.gitignore
+
+# Node.js
+web/node_modules/
+web/dist/
+web/coverage/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# IDE
+.vscode/
+.zed/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Scripts
+scripts/
+
+# Tests
+tests/
+
+# Config files
+.env*
+
+# Data
+data/
+
+# Benchmarks
+benchmarks/
+
+# Legacy files
+deploy/
+cross/
+data/
+src/config/config.cdx.xml
+src/flight/flight.cdx.xml
+src/infra/infra.cdx.xml
+src/ingester/ingester.cdx.xml
+src/proto/proto.cdx.xml
+src/report_server/report_server.cdx.xml
+src/wal/wal.cdx.xml
+bom.json
+coverage.sh
+download.sh
+downloadO2.sh
+openobserve.cdx.xml
+openobserve.cdx.xml.vex.json
+screenshots/
+src/config/config.cdx.xml
+src/flight/flight.cdx.xml
+src/infra/infra.cdx.xml
+src/ingester/ingester.cdx.xml
+src/proto/proto.cdx.xml
+src/report_server/report_server.cdx.xml
+src/wal/wal.cdx.xml
+web/sbom.json
+web/ui-guidelines/
