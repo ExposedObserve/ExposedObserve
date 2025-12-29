@@ -4374,7 +4374,7 @@ dependencies = [
 
 [[package]]
 name = "exposedobserve"
-version = "0.17.0"
+version = "0.0.1"
 dependencies = [
  "actix-cors",
  "actix-http",
