@@ -9,6 +9,9 @@ RUN NODE_OPTIONS="--max-old-space-size=8192" npm run build
 
 FROM public.ecr.aws/docker/library/rust:slim-bookworm AS builder
 
+ARG GIT_VERSION=v0.0.0
+ARG GIT_COMMIT_HASH=dev
+
 WORKDIR /exposedobserve
 
 RUN apt-get update && apt-get install -y \
@@ -22,6 +25,8 @@ RUN apt-get update && apt-get install -y \
 COPY . /exposedobserve
 COPY --from=webbuilder /web/dist web/dist
 
+ENV GIT_VERSION=$GIT_VERSION
+ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \

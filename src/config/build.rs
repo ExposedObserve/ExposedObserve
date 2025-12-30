@@ -13,27 +13,32 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{io::Result, process::Command};
-
+use std::{io::Result, process::Command, env};
 use chrono::{DateTime, SecondsFormat, Utc};
+
+fn get_git_info(args: &[&str], env_var: &str) -> String {
+    if let Ok(val) = env::var(env_var) {
+        return val;
+    }
+
+    let output = Command::new("git")
+        .args(args)
+        .output();
+
+    match output {
+        Ok(o) if o.status.success() => String::from_utf8(o.stdout).unwrap_or_default().trim().to_string(),
+        _ => "unknown".to_string(),
+    }
+}
 
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
 
-    // build information
-    let output = Command::new("git")
-        .args(["describe", "--tags", "--abbrev=0"])
-        .output()
-        .unwrap();
-    let git_tag = String::from_utf8(output.stdout).unwrap();
-    println!("cargo:rustc-env=GIT_VERSION={git_tag}");
+    let version = get_git_info(&["describe", "--tags", "--abbrev=0"], "GIT_VERSION");
+    println!("cargo:rustc-env=GIT_VERSION={}", version);
 
-    let output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .unwrap();
-    let git_commit = String::from_utf8(output.stdout).unwrap();
-    println!("cargo:rustc-env=GIT_COMMIT_HASH={git_commit}");
+    let commit = get_git_info(&["rev-parse", "HEAD"], "GIT_COMMIT_HASH");
+    println!("cargo:rustc-env=GIT_COMMIT_HASH={}", commit);
 
     let now: DateTime<Utc> = Utc::now();
     let build_date = now.to_rfc3339_opts(SecondsFormat::Secs, true);

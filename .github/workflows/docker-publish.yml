@@ -47,6 +47,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          build-args: |
+            GIT_VERSION=${{ github.ref_name }}
+            GIT_COMMIT_HASH=${{ github.sha }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
