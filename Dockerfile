@@ -27,7 +27,7 @@ COPY --from=webbuilder /web/dist web/dist
 
 ENV GIT_VERSION=$GIT_VERSION
 ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld -C target-feature=+aes,+sse2"
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
