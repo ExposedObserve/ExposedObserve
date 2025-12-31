@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     lld \
     clang \
     protobuf-compiler \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . /exposedobserve
