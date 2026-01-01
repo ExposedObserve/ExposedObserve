@@ -33,7 +33,9 @@ ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld -C target-feature=+aes,+sse2"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/exposedobserve/target \
-    cargo build --release --features mimalloc --jobs 2
+    cargo build --release --features mimalloc --jobs 2 && \
+    mkdir -p /out && \
+    cp target/release/exposedobserve /out/exposedobserve
 
 FROM public.ecr.aws/debian/debian:trixie-slim AS runtime
 
@@ -50,7 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
-COPY --from=builder /exposedobserve/target/release/exposedobserve /
+COPY --from=builder /out/exposedobserve /exposedobserve
 
 RUN ["/exposedobserve", "init-dir", "-p", "/data/"]
 CMD ["/exposedobserve"]
