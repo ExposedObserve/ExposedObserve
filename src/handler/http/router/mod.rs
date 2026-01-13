@@ -201,14 +201,17 @@ pub fn get_proxy_routes_inner(svc: &mut web::ServiceConfig, enable_validator: bo
         .allow_any_origin()
         .allow_any_method()
         .allow_any_header();
-    // TODO Oidc validator?
+
     if enable_validator {
+        #[cfg(feature = "oidc")]
+        let proxy_auth = HttpAuthentication::with_fn(super::auth::ext_validator::proxy_validator);
+        #[cfg(not(feature = "oidc"))]
+        let proxy_auth = HttpAuthentication::with_fn(super::auth::validator::validator_proxy_url);
+
         svc.service(
             web::resource("/proxy/{org_id}/{target_url:.*}")
                 .wrap(cors)
-                .wrap(HttpAuthentication::with_fn(
-                    super::auth::validator::validator_proxy_url,
-                ))
+                .wrap(proxy_auth)
                 .route(web::get().to(proxy)),
         );
     } else {
