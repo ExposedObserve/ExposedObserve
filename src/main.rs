@@ -26,13 +26,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use actix_web::{
-    App, HttpServer,
-    dev::ServerHandle,
-    http::KeepAlive,
-    middleware::{self},
-    web,
-};
+use actix_web::{App, HttpServer, dev::ServerHandle, http::KeepAlive, middleware, web};
 use actix_web_opentelemetry::RequestTracing;
 use arrow_flight::flight_service_server::FlightServiceServer;
 use config::{
@@ -323,13 +317,6 @@ async fn main() -> Result<(), anyhow::Error> {
             if let Err(e) = job::init().await {
                 job_init_tx.send(false).ok();
                 panic!("job init failed: {e}");
-            }
-
-            // init service graph workers
-            #[cfg(feature = "enterprise")]
-            if cfg.service_graph.enabled {
-                log::info!("Initializing service graph background workers");
-                exposedobserve::service::traces::service_graph::init_background_workers();
             }
 
             // Register job runtime for metrics collection
@@ -659,8 +646,6 @@ async fn init_http_server_without_tracing_with_redis_store(
         let mut app = App::new().wrap(oidc::session::get_redis_session_middleware(store.clone()));
 
         if config::cluster::LOCAL_NODE.is_router() {
-            let http_client =
-                router::http::create_http_client().expect("Failed to create http tls client");
             let factory = web::scope(&cfg.common.base_uri);
             #[cfg(feature = "enterprise")]
             let factory = factory.wrap(
@@ -684,7 +669,6 @@ async fn init_http_server_without_tracing_with_redis_store(
                         .configure(get_basic_routes)
                         .configure(get_proxy_routes),
                 )
-                .app_data(web::Data::new(http_client))
         } else {
             app = app.service({
                 let scope = web::scope(&cfg.common.base_uri)
@@ -754,8 +738,6 @@ async fn init_http_server_without_tracing_with_cookie_store(
         let mut app = App::new().wrap(oidc::session::get_cookie_session_middleware());
 
         if config::cluster::LOCAL_NODE.is_router() {
-            let http_client =
-                router::http::create_http_client().expect("Failed to create http tls client");
             let factory = web::scope(&cfg.common.base_uri);
             #[cfg(feature = "enterprise")]
             let factory = factory.wrap(
@@ -779,7 +761,6 @@ async fn init_http_server_without_tracing_with_cookie_store(
                         .configure(get_basic_routes)
                         .configure(get_proxy_routes),
                 )
-                .app_data(web::Data::new(http_client))
         } else {
             app = app.service({
                 let scope = web::scope(&cfg.common.base_uri)
@@ -850,8 +831,6 @@ async fn init_http_server_with_redis_store(
         let mut app = App::new().wrap(oidc::session::get_redis_session_middleware(store.clone()));
 
         if config::cluster::LOCAL_NODE.is_router() {
-            let http_client =
-                router::http::create_http_client().expect("Failed to create http tls client");
             let factory = web::scope(&cfg.common.base_uri);
             #[cfg(feature = "enterprise")]
             let factory = factory.wrap(
@@ -874,7 +853,6 @@ async fn init_http_server_with_redis_store(
                         .configure(get_basic_routes)
                         .configure(get_proxy_routes),
                 )
-                .app_data(web::Data::new(http_client))
         } else {
             app = app.service({
                 let scope = web::scope(&cfg.common.base_uri)
@@ -944,8 +922,6 @@ async fn init_http_server_with_cookie_store(
         let mut app = App::new().wrap(oidc::session::get_cookie_session_middleware());
 
         if config::cluster::LOCAL_NODE.is_router() {
-            let http_client =
-                router::http::create_http_client().expect("Failed to create http tls client");
             let factory = web::scope(&cfg.common.base_uri);
             #[cfg(feature = "enterprise")]
             let factory = factory.wrap(
@@ -968,7 +944,6 @@ async fn init_http_server_with_cookie_store(
                         .configure(get_basic_routes)
                         .configure(get_proxy_routes),
                 )
-                .app_data(web::Data::new(http_client))
         } else {
             app = app.service({
                 let scope = web::scope(&cfg.common.base_uri)
@@ -1216,10 +1191,7 @@ async fn init_http_server() -> Result<(), anyhow::Error> {
         };
         log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
         let mut app = App::new();
-
         if config::cluster::LOCAL_NODE.is_router() {
-            let http_client =
-                router::http::create_http_client().expect("Failed to create http tls client");
             let factory = web::scope(&cfg.common.base_uri);
             #[cfg(feature = "enterprise")]
             let factory = factory.wrap(
@@ -1227,8 +1199,8 @@ async fn init_http_server() -> Result<(), anyhow::Error> {
                     router::ratelimit::resource_extractor::default_extractor,
                 )),
             );
-            app = app
-                .service(
+
+            app = app.service(
                     // if `cfg.common.base_uri` is empty, scope("") still works as expected.
                     factory
                         .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
@@ -1242,7 +1214,6 @@ async fn init_http_server() -> Result<(), anyhow::Error> {
                         .configure(get_basic_routes)
                         .configure(get_proxy_routes),
                 )
-                .app_data(web::Data::new(http_client))
         } else {
             app = app.service({
                 let scope = web::scope(&cfg.common.base_uri)
@@ -1320,10 +1291,7 @@ async fn init_http_server_without_tracing() -> Result<(), anyhow::Error> {
         log::info!("Starting {scheme} server at: {haddr}, thread_id: {local_id}");
 
         let mut app = App::new();
-
         if config::cluster::LOCAL_NODE.is_router() {
-            let http_client =
-                router::http::create_http_client().expect("Failed to create http tls client");
             let factory = web::scope(&cfg.common.base_uri);
             #[cfg(feature = "enterprise")]
             let factory = factory.wrap(
@@ -1332,8 +1300,7 @@ async fn init_http_server_without_tracing() -> Result<(), anyhow::Error> {
                 )),
             );
 
-            app = app
-                .service(
+            app = app.service(
                     // if `cfg.common.base_uri` is empty, scope("") still works as expected.
                     factory
                         .wrap(middlewares::SlowLog::new(cfg.limit.http_slow_log_threshold))
@@ -1347,7 +1314,6 @@ async fn init_http_server_without_tracing() -> Result<(), anyhow::Error> {
                         .configure(get_basic_routes)
                         .configure(get_proxy_routes),
                 )
-                .app_data(web::Data::new(http_client))
         } else {
             app = app.service({
                 let scope = web::scope(&cfg.common.base_uri)
