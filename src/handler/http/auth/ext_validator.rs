@@ -180,17 +180,18 @@ fn forbidden_response(
 /// Extracts organization ID from API or proxy paths.
 ///
 /// Supports the following path patterns:
-/// - `/api/{org_id}/...`
-/// - `/api/v2/{org_id}/...`
-/// - `/proxy/{org_id}/...`
+/// - `/api/{org_id}/{service}/...`
+/// - `/api/v2/{org_id}/{service}/...`
+/// - `/proxy/{org_id}/{target_url}`
 ///
-/// Returns the organization ID if found, None otherwise.
+/// Returns the organization ID if found and path has required segments, None otherwise.
+/// This mimics the behavior of the original regex-based extraction.
 fn extract_org_from_path(path: &str) -> Option<String> {
     let segments: Vec<&str> = path.trim_start_matches('/').split('/').collect();
 
-    if segments.len() >= 2 && (segments[0] == "api" || segments[0] == "proxy") {
-        // Handle /api/v2/{org}/... pattern
-        let org_index = if segments[0] == "api" && segments.get(1) == Some(&"v2") && segments.len() > 2 {
+    if segments.len() >= 3 && (segments[0] == "api" || segments[0] == "proxy") {
+        // Handle /api/v2/{org}/{service}/... pattern
+        let org_index = if segments[0] == "api" && segments.get(1) == Some(&"v2") && segments.len() > 3 {
             2
         } else {
             1
@@ -559,6 +560,34 @@ mod tests {
         assert_eq!(extract_org_from_path(""), None);
         assert_eq!(extract_org_from_path("/api"), None); // Missing org
         assert_eq!(extract_org_from_path("/proxy"), None); // Missing org
+        assert_eq!(extract_org_from_path("/api/organizations"), None); // System endpoint, no service segment
+        assert_eq!(extract_org_from_path("/api/users"), None); // System endpoint, no service segment
+    }
+
+    #[tokio::test]
+    async fn test_oidc_validator_system_endpoint() {
+        // Create mock admin user info
+        let mut org_roles = std::collections::HashMap::new();
+        org_roles.insert("default".to_string(), "admin".to_string());
+
+        let user_info = UserInfo {
+            sub: "admin_user".to_string(),
+            email: "admin@example.com".to_string(),
+            orgs: std::collections::HashSet::from(["default".to_string()]),
+            org_roles,
+            is_internal: false,
+        };
+
+        // Create test request for system endpoint (no org_id extracted)
+        let req = TestRequest::get()
+            .uri("/api/organizations")
+            .to_srv_request();
+
+        // Test oidc_validator with system endpoint
+        let result = oidc_validator(req, &user_info).await;
+
+        // Should succeed because no org_id is extracted (system endpoint)
+        assert!(result.is_ok());
     }
 
     #[tokio::test]

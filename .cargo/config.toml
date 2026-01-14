@@ -1,16 +1,30 @@
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "target-feature=+aes,+sse2,+ssse3,+sse4.1,+sse4.2"]
+rustflags = [
+  "-C", "link-arg=-fuse-ld=lld",
+  "-C", "target-feature=+aes,+sse2,+ssse3,+sse4.1,+sse4.2"
+]
+linker = "clang"
 
 [target.x86_64-unknown-linux-musl]
-rustflags = ["-C", "target-feature=+aes,+sse2,+ssse3,+sse4.1,+sse4.2"]
+linker = "clang"
+rustflags = [
+  "-C", "link-arg=-fuse-ld=lld",
+  "-C", "target-feature=+aes,+sse2,+ssse3,+sse4.1,+sse4.2"
+]
 
 [target.aarch64-unknown-linux-gnu]
-linker = "aarch64-linux-gnu-gcc"
-rustflags = ["-C", "target-feature=+aes,+neon"]
+linker = "clang"
+rustflags = [
+  "-C", "link-arg=-fuse-ld=lld",
+  "-C", "target-feature=+aes,+neon"
+]
 
 [target.aarch64-unknown-linux-musl]
-linker = "aarch64-linux-gnu-gcc"
-rustflags = ["-C", "target-feature=+aes,+neon"]
+linker = "clang"
+rustflags = [
+  "-C", "link-arg=-fuse-ld=lld",
+  "-C", "target-feature=+aes,+neon"
+]
 
 [target.aarch64-apple-darwin]
 rustflags = ["-C", "target-feature=+aes,+neon"]

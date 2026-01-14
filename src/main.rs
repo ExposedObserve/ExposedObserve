@@ -476,7 +476,7 @@ async fn main() -> Result<(), anyhow::Error> {
     };
 
     // init http server
-    init_http_srv().await;
+    let _ = init_http_srv().await;
     log::info!("HTTP server stopped");
 
     // stop tracing
