@@ -1,6 +1,9 @@
-# Rust build artifacts
+# Rust
 target/
-Cargo.lock
+**/*.rs.bk
+**/*.swp
+.cargo/.crates.toml
+.cargo/.crates*.json
 
 # Git
 .git/
@@ -12,11 +15,13 @@ web/dist/
 web/coverage/
 
 # Docker
+docker/
 Dockerfile*
 docker-compose*.yml
 .dockerignore
 
 # IDE
+.idea/
 .vscode/
 .zed/
 
@@ -27,6 +32,8 @@ Thumbs.db
 # Documentation
 *.md
 !README.md
+LICENSE
+docs/
 
 # CI/CD
 .github/
@@ -49,7 +56,6 @@ benchmarks/
 # Legacy files
 deploy/
 cross/
-data/
 src/config/config.cdx.xml
 src/flight/flight.cdx.xml
 src/infra/infra.cdx.xml
@@ -73,3 +79,4 @@ src/report_server/report_server.cdx.xml
 src/wal/wal.cdx.xml
 web/sbom.json
 web/ui-guidelines/
+build.sh

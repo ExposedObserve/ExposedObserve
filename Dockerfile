@@ -1,18 +1,16 @@
 # syntax=docker/dockerfile:1
 
 FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS webbuilder
-WORKDIR /web
-COPY ./web /web/
+COPY ./web/package*.json /tmp/web/
+RUN cd /tmp/web && npm install
+RUN mkdir /web && cp -a /tmp/web/node_modules /web/
 
-RUN npm install
+WORKDIR /web
+COPY ./web/ /web/
+
 RUN NODE_OPTIONS="--max-old-space-size=8192" npm run build
 
 FROM public.ecr.aws/docker/library/rust:slim-bookworm AS builder
-
-ARG GIT_VERSION=v0.0.0
-ARG GIT_COMMIT_HASH=dev
-
-WORKDIR /exposedobserve
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
@@ -23,17 +21,24 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . /exposedobserve
+WORKDIR /exposedobserve
+
+COPY . ./
+
 COPY --from=webbuilder /web/dist web/dist
+
+ARG GIT_VERSION=v0.0.0
+ARG GIT_COMMIT_HASH=dev
+ARG CARGO_JOBS=2
 
 ENV GIT_VERSION=$GIT_VERSION
 ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld -C target-feature=+aes,+sse2"
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/usr/local/rustup \
     --mount=type=cache,target=/exposedobserve/target \
-    cargo build --release --features mimalloc --jobs 2 && \
+    cargo build --release --features mimalloc --jobs "$CARGO_JOBS" && \
     mkdir -p /out && \
     cp target/release/exposedobserve /out/exposedobserve
 
