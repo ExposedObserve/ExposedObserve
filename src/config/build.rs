@@ -34,9 +34,8 @@ fn get_git_info(args: &[&str], env_var: &str) -> String {
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
 
-    let version = get_git_info(&["describe", "--tags", "--abbrev=0"], "GIT_VERSION");
+    let version = get_git_info(&["describe", "--tags", "--abbrev=0", "--match", "v*"], "GIT_VERSION");
     println!("cargo:rustc-env=GIT_VERSION={}", version);
-
     let commit = get_git_info(&["rev-parse", "HEAD"], "GIT_COMMIT_HASH");
     println!("cargo:rustc-env=GIT_COMMIT_HASH={}", commit);
 

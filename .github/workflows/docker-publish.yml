@@ -19,8 +19,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine Docker tags
-        id: tags
+      - name: Determine version and Docker tags
+        id: meta
         run: |
           IMAGE_NAME=${GITHUB_REPOSITORY,,}
           IMAGE="${{ env.REGISTRY }}/${IMAGE_NAME}"
@@ -28,6 +28,8 @@ jobs:
 
           REF="${{ github.ref }}"
           SHA_SHORT="${GITHUB_SHA::8}"
+
+          GIT_VERSION=$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null || echo "v0.0.0")
 
           if [[ "$REF" == refs/tags/eo-v* ]]; then
             VERSION_RAW="${REF#refs/tags/eo-v}"
@@ -47,8 +49,10 @@ jobs:
           TAGS+="$IMAGE:sha-$SHA_SHORT"
           TAGS=${TAGS%,}
 
+          echo "git_version=$GIT_VERSION" >> $GITHUB_OUTPUT
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
           echo "Generated tags: $TAGS"
+          echo "Using GIT_VERSION: $GIT_VERSION"
 
       - name: Set up Swap Space
         uses: pierotofy/set-swap-space@master
@@ -71,24 +75,10 @@ jobs:
           context: .
           platforms: linux/amd64
           build-args: |
-            GIT_VERSION=${{ github.ref_name }}
+            GIT_VERSION=${{ steps.meta.outputs.git_version }}
             GIT_COMMIT_HASH=${{ github.sha }}
             CARGO_JOBS=4
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push arm64
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/arm64
-          build-args: |
-            GIT_VERSION=${{ github.ref_name }}
-            GIT_COMMIT_HASH=${{ github.sha }}
-            CARGO_JOBS=2
-          push: true
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
