@@ -82,5 +82,5 @@ jobs:
             CARGO_JOBS=4
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=$repo-slug
+          cache-to: type=gha,mode=max,scope=$repo-slug
