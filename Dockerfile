@@ -1,14 +1,19 @@
 # syntax=docker/dockerfile:1
 
 FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS webbuilder
-COPY ./web/package*.json /tmp/web/
-RUN cd /tmp/web && npm install
-RUN mkdir /web && cp -a /tmp/web/node_modules /web/
 
 WORKDIR /web
-COPY ./web/ /web/
 
-RUN NODE_OPTIONS="--max-old-space-size=8192" npm run build
+COPY ./web/package*.json ./
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+
+COPY ./web/ .
+
+RUN --mount=type=cache,target=/web/node_modules/.vite \
+    --mount=type=cache,target=/web/node_modules/.cache \
+    NODE_OPTIONS="--max-old-space-size=8192" npm run build
 
 FROM public.ecr.aws/docker/library/rust:slim-bookworm AS builder
 
