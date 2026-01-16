@@ -135,9 +135,13 @@ async fn build_validation_response(user_info: &UserInfo) -> Result<HttpResponse,
     if service::ext_users::sync_user_info(&user_info).await {
         log::info!("User validation successful for: {}", user_info.email);
         let cb = cb_url(Some(user_info));
-        Ok(HttpResponse::Found()
+        log::debug!("Redirecting to frontend with user info: {}", cb);
+        log::debug!("About to create and return HTTP redirect response");
+        let response = HttpResponse::Found()
             .append_header(("Location", cb))
-            .finish())
+            .finish();
+        log::debug!("HTTP response object created successfully");
+        Ok(response)
     } else {
         log::error!("User validation failed for: {} (sub: {})", user_info.email, user_info.sub);
         Ok(oidc::errors::auth_failure_response(
