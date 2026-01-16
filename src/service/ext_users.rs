@@ -74,8 +74,16 @@ pub async fn sync_user_info(user_info: &UserInfo) -> bool {
     let (first_name, last_name) = name.split_once(' ').unwrap_or((name, ""));
     let user_email = user_info.email.as_str();
     let db_user = db::user::get_user_by_email(user_email).await;
-    // Check and create Orgs
-    let user_orgs = check_and_create_user_orgs(user_info).await.unwrap();
+
+    // Check and create Orgs - handle errors properly instead of panicking
+    let user_orgs = match check_and_create_user_orgs(user_info).await {
+        Ok(orgs) => orgs,
+        Err(e) => {
+            log::error!("Failed to create/check user organizations for {}: {}", user_email, e);
+            return false;
+        }
+    };
+
     if db_user.is_none() {
         // Create new user
         return add_new_user(user_email, first_name, last_name, user_orgs).await;
@@ -130,7 +138,7 @@ async fn check_and_update_orgs_users(user_info: &UserInfo) -> bool {
                 .get(&org_name)
                 .unwrap_or(&UserRole::User.to_string()),
         )
-        .unwrap();
+        .unwrap_or(UserRole::User);
         match db::org_users::add(&org_name, email, role, "", None).await {
             Ok(()) => {
                 log::info!("User: {} successfully added to org: {}", email, &org_name);
@@ -193,7 +201,7 @@ async fn check_and_create_user_orgs(user_info: &UserInfo) -> Result<Vec<UserOrg>
             }
         };
         let role = match user_info.org_roles.get(org_id) {
-            Some(str) => UserRole::from_str(str).unwrap(),
+            Some(str) => UserRole::from_str(str).unwrap_or(UserRole::User),
             None => UserRole::User,
         };
         let user_org = UserOrg {
