@@ -45,7 +45,7 @@ use crate::{
         self, AuthTokens, AuthorizationState, CallbackState, CustomClient, CustomToken,
         CustomTokenResponse, UserInfo,
     },
-    session::{extract_auth_state, insert_auth_state, update_tokens},
+    session::{extract_auth_state, insert_auth_state, log_session_contents, update_tokens},
 };
 
 pub async fn logout(req: HttpRequest) -> Result<HttpResponse> {
@@ -136,6 +136,7 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
                 err
             })?;
             log::debug!("Successfully updated tokens in session");
+            log_session_contents(&req);
             Ok(res.0)
         }
         Err(e) => {

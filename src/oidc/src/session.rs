@@ -1,4 +1,4 @@
- // Copyright (C) 2025 Mike Sauh
+// Copyright (C) 2025 Mike Sauh
 //
 // This file is part of ExposedObserve, a modified fork of OpenObserve.
 //
@@ -28,15 +28,18 @@ use actix_session::{
 };
 use actix_web::{HttpRequest, cookie::Key, http::StatusCode};
 use base64::Engine;
-use log::error;
+use log::{Level, error};
 
 use crate::{
     config::{
-        self, AUTH_STATE, AUTH_TOKENS_COOKIE, AUTH_TOKENS_SESSION_KEY, OIDC_SESSION_FLAG, SessionConfig, get_oidc_config
+        self, AUTH_STATE, AUTH_TOKENS_COOKIE, AUTH_TOKENS_SESSION_KEY, OIDC_SESSION_FLAG,
+        SessionConfig, get_oidc_config,
     },
     errors::AuthError,
     models::{AuthTokens, AuthorizationState},
 };
+
+const LOG_TARGET: &str = module_path!();
 
 /// Enum representing the type of session store to use for OIDC sessions.
 ///
@@ -86,9 +89,10 @@ pub async fn get_session_store() -> OidcSessionStore {
 /// # Panics
 /// Panics if Redis URL is missing from config or if connection to Redis fails.
 pub async fn get_redis_session_store(session_config: &SessionConfig) -> RedisSessionStore {
-    let redis_url = session_config.redis_url.as_ref().expect(
-            "Redis URL must be provided in OIDC session config when using Redis session store",
-        );
+    let redis_url = session_config
+        .redis_url
+        .as_ref()
+        .expect("Redis URL must be provided in OIDC session config when using Redis session store");
     RedisSessionStore::new(redis_url)
         .await
         .inspect_err(|e| error!("Failed to create Redis session store: {}", e))
@@ -106,7 +110,9 @@ pub async fn get_redis_session_store(session_config: &SessionConfig) -> RedisSes
 ///
 /// # Returns
 /// * `SessionMiddleware<RedisSessionStore>` - Configured session middleware
-pub fn get_redis_session_middleware(store: RedisSessionStore) -> SessionMiddleware<RedisSessionStore> {
+pub fn get_redis_session_middleware(
+    store: RedisSessionStore,
+) -> SessionMiddleware<RedisSessionStore> {
     session_middleware(store, &get_oidc_config().session_config)
 }
 
@@ -119,7 +125,10 @@ pub fn get_redis_session_middleware(store: RedisSessionStore) -> SessionMiddlewa
 /// # Returns
 /// * `SessionMiddleware<CookieSessionStore>` - Configured session middleware
 pub fn get_cookie_session_middleware() -> SessionMiddleware<CookieSessionStore> {
-    session_middleware(CookieSessionStore::default(), &get_oidc_config().session_config)
+    session_middleware(
+        CookieSessionStore::default(),
+        &get_oidc_config().session_config,
+    )
 }
 
 fn session_middleware<S: SessionStore>(
@@ -187,7 +196,35 @@ pub(crate) fn update_tokens(
     session.insert(OIDC_SESSION_FLAG, true)?;
     session.insert(AUTH_TOKENS_SESSION_KEY, auth_tokens)?;
     session.renew();
+    log::debug!("Session updated with OIDC tokens - oidc flag and tokens stored");
     Ok(())
+}
+
+/// Debug function to log session contents for troubleshooting.
+///
+/// This function logs the keys present in the session without exposing
+/// sensitive values like tokens. Useful for debugging session state issues.
+///
+/// # Arguments
+/// * `req` - The HTTP request containing the session to inspect
+pub fn log_session_contents(req: &HttpRequest) {
+    let session = req.get_session();
+    if is_trace_or_debug_enabled() {
+        let has_auth_tokens = session
+            .get::<serde_json::Value>(AUTH_TOKENS_SESSION_KEY)
+            .is_ok();
+        let has_oidc_flag = session
+            .get::<bool>(OIDC_SESSION_FLAG)
+            .unwrap_or(None)
+            .is_some();
+        let has_auth_state = session.get::<serde_json::Value>(AUTH_STATE).is_ok();
+        log::debug!(
+            "Session status - auth_tokens: {}, oidc_flag: {}, auth_state: {}",
+            has_auth_tokens,
+            has_oidc_flag,
+            has_auth_state
+        );
+    }
 }
 
 /// Stores the OAuth authorization state in the session.
@@ -239,6 +276,13 @@ pub(crate) fn extract_auth_state(session: &Session) -> Result<AuthorizationState
             StatusCode::UNAUTHORIZED,
         )),
     }
+}
+
+fn is_trace_or_debug_enabled() -> bool {
+    if log::log_enabled!(target: LOG_TARGET, Level::Trace) {
+        return true;
+    }
+    log::log_enabled!(target: LOG_TARGET, Level::Debug)
 }
 
 #[cfg(test)]
@@ -388,7 +432,12 @@ mod tests {
 
         let err = result.unwrap_err();
         assert_eq!(err.status_code, StatusCode::UNAUTHORIZED);
-        assert!(err.message.as_ref().unwrap().contains("Failed to deserialize"));
+        assert!(
+            err.message
+                .as_ref()
+                .unwrap()
+                .contains("Failed to deserialize")
+        );
     }
 
     #[test]
@@ -397,7 +446,9 @@ mod tests {
         let session = req.get_session();
 
         // Insert invalid data for tokens
-        session.insert(AUTH_TOKENS_SESSION_KEY, "invalid data").unwrap();
+        session
+            .insert(AUTH_TOKENS_SESSION_KEY, "invalid data")
+            .unwrap();
 
         let result = get_session_tokens(&req);
         assert!(result.is_none());
