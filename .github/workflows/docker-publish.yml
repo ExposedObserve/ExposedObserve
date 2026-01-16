@@ -72,6 +72,44 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache-cargo-registry
+            cache-cargo-git
+            cache-cargo-target
+          key: ${{ runner.os }}-rust-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-
+
+      - name: Cache Vue
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache-npm
+            cache-vue-build
+            cache-vue-vite
+          key: ${{ runner.os }}-vue-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vue-
+    
+      - name: Inject Rust Cache
+        uses: reproducible-containers/buildkit-cache-dance@v3
+        with:
+          cache-map: |
+            cache-cargo-registry -> /usr/local/cargo/registry
+            cache-cargo-git -> /usr/local/cargo/git
+            cache-cargo-target -> /exposedobserve/target
+
+      - name: Inject Frontend Cache
+        uses: reproducible-containers/buildkit-cache-dance@v3
+        with:
+          cache-map: |
+            cache-npm -> /root/.npm
+            cache-vue-vite -> /web/node_modules/.vite
+            cache-vue-build -> /web/node_modules/.cache
+
       - name: Build and push amd64
         uses: docker/build-push-action@v5
         with:
@@ -83,5 +121,5 @@ jobs:
             CARGO_JOBS=4
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=$repo-slug
-          cache-to: type=gha,mode=max,scope=$repo-slug
+          cache-from: type=gha,scope=${{ github.repository }}
+          cache-to: type=gha,mode=max,scope=${{ github.repository }}
