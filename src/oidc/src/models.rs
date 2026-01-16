@@ -120,11 +120,13 @@ impl UserInfo {
                     None => &default_email,
                 }
                 .to_string();
-                let orgs = map_claims_to_orgs(
+                let mut orgs = map_claims_to_orgs(
                     &oidc_config.org_claim_pattern,
                     &oidc_config.org_claim,
                     ext_map,
                 );
+                // Filter out blacklisted organizations
+                orgs.retain(|org| !oidc_config.org_blacklist.contains(org));
 
                 let org_roles = map_claims_to_roles(&oidc_config, ext_map);
                 Self {
@@ -892,6 +894,70 @@ mod tests {
         // Should fall back to standard email claim
         assert_eq!(user_info.email, "standard@example.com");
         assert_eq!(user_info.sub, "citizen");
+
+        clear_test_config();
+    }
+
+    #[test]
+    fn test_org_blacklist_filtering() {
+        use crate::config::{set_test_config, clear_test_config};
+
+        // Create a config with org blacklist
+        let mut org_blacklist = HashSet::new();
+        org_blacklist.insert("blocked_org".to_string());
+        org_blacklist.insert("another_blocked".to_string());
+
+        let config = OidcConfig::new(
+            "test".to_string(),
+            Some("test".to_string()),
+            "https://example.com".to_string(),
+            "https://example.com/callback".to_string(),
+            "https://example.com/callback".to_string(),
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        );
+        // Manually set the blacklist since the test constructor doesn't support it
+        let mut config_with_blacklist = config;
+        config_with_blacklist.org_blacklist = org_blacklist;
+
+        set_test_config(config_with_blacklist);
+
+        // Create JWT token with groups including blocked ones
+        let claims_json = r#"{
+                "sub": "citizen",
+                "aud": "client",
+                "nbf": 1762941467,
+                "azp": "client",
+                "iss": "http://localhost:8080/default",
+                "groups": [
+                    "allowed_org",
+                    "blocked_org",
+                    "another_allowed",
+                    "another_blocked"
+                ],
+                "exp": 9999999999,
+                "iat": 1762941467,
+                "jti": "c2a5bf31-29aa-41f6-b101-ae5eeb09164c",
+                "tid": "default",
+                "email": "test@example.com"
+                }"#;
+        let id_token_str = format!(
+            "eyJraWQiOiJkZWZhdWx0IiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYifQ.{}.aHUQihTTpVEC1jSjvbm8ikajfRoe1GunqtZw9OHnccu5mQoFVsUS4Dtt_q8m-0BLQknlVl7SxctKE6jd5cvpc1202737O7XrAKDLH94-_tQdzp6Whhk0YcIrRtMyBKrTgMr0wmv0qjZ2U9WB9jx6Soy-w8LFhAQS4rOdFcpHdbVMLRugPFUkRG47_hvj1746VzAdUTV3_Xn4qJMdCelTN1reWMZejZTrA9qJXpfsWM-8tJIDN27-_DpqcwCoBwRZ-dqAcVuBnPmLWAUfV-2pxpu5J0o0w81Zrc7zqtEn7Gr5vaNg8j6sxfpa5yq9chbTEM7si9Fm3kv1LrnflNhKYA",
+            base64::engine::general_purpose::STANDARD_NO_PAD.encode(claims_json)
+        );
+
+        let id_token: CustomToken = CustomToken::from_str(id_token_str.as_str()).unwrap();
+        let verifier = &IdTokenVerifier::<CoreJsonWebKey>::new_insecure_without_verification();
+        let claims: &CustomTokenClaims = id_token.claims(verifier, empty_nonce_verifier()).unwrap();
+        let user_info = UserInfo::from_claims(claims);
+
+        // Should only contain allowed organizations, blocked ones should be filtered out
+        let expected_orgs: HashSet<String> = HashSet::from([
+            "allowed_org".to_string(),
+            "another_allowed".to_string()
+        ]);
+        assert_eq!(user_info.orgs, expected_orgs);
+        assert!(!user_info.orgs.contains("blocked_org"));
+        assert!(!user_info.orgs.contains("another_blocked"));
 
         clear_test_config();
     }
