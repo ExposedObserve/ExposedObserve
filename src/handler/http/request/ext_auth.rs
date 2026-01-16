@@ -106,8 +106,16 @@ pub async fn auth(
 /// A redirect response with validated user info or an error response
 #[get("/callback")]
 pub async fn callback(req: HttpRequest) -> Result<HttpResponse, actix_web::Error> {
-    let user_info = oidc::client::retrieve_user_info(req).await?;
-    build_validation_response(&user_info).await
+    match oidc::client::retrieve_user_info(req).await {
+        Ok(user_info) => {
+            log::info!("Successfully retrieved user info from OIDC provider: {}", user_info.email);
+            build_validation_response(&user_info).await
+        }
+        Err(err) => {
+            log::error!("Failed to retrieve user info from OIDC provider: {}", err);
+            Err(err.into())
+        }
+    }
 }
 
 /// Builds HTTP response based on user validation result.
@@ -123,12 +131,15 @@ pub async fn callback(req: HttpRequest) -> Result<HttpResponse, actix_web::Error
 /// # Returns
 /// A redirect response if valid, or error response if invalid
 async fn build_validation_response(user_info: &UserInfo) -> Result<HttpResponse, actix_web::Error> {
+    log::debug!("Validating user info for: {} (sub: {})", user_info.email, user_info.sub);
     if service::ext_users::sync_user_info(&user_info).await {
+        log::info!("User validation successful for: {}", user_info.email);
         let cb = cb_url(Some(user_info));
         Ok(HttpResponse::Found()
             .append_header(("Location", cb))
             .finish())
     } else {
+        log::error!("User validation failed for: {} (sub: {})", user_info.email, user_info.sub);
         Ok(oidc::errors::auth_failure_response(
             None,
             StatusCode::FORBIDDEN,
