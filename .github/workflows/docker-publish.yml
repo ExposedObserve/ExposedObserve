@@ -78,6 +78,7 @@ jobs:
           path: |
             cache-cargo-registry
             cache-cargo-git
+            cache-cargo-rustup
             cache-cargo-target
           key: ${{ runner.os }}-rust-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
@@ -101,6 +102,7 @@ jobs:
             {
               "cache-cargo-registry": "/usr/local/cargo/registry",
               "cache-cargo-git": "/usr/local/cargo/git",
+              "cache-cargo-rustup": "/usr/local/rustup",
               "cache-cargo-target": "/exposedobserve/target"
             }
 
@@ -115,7 +117,7 @@ jobs:
             }
 
       - name: Build and push amd64
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64
