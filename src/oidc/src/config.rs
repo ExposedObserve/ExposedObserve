@@ -91,6 +91,8 @@ pub(crate) static OIDC_ORG_CLAIM_PATTERN: &str = "OIDC_ORG_CLAIM_PATTERN";
 pub(crate) static OIDC_SUBJECT_CLAIM: &str = "OIDC_SUBJECT_CLAIM";
 /// Environment variable name for email claim name.
 pub(crate) static OIDC_EMAIL_CLAIM: &str = "OIDC_EMAIL_CLAIM";
+/// Environment variable name for organization blacklist (comma-separated).
+pub(crate) static OIDC_ORG_BLACKLIST: &str = "OIDC_ORG_BLACKLIST";
 /// Environment variable name for session store type (cookie or redis).
 pub(crate) static OIDC_SESSION_STORE: &str = "OIDC_SESSION_STORE";
 /// Environment variable name for Redis URL for session storage.
@@ -244,6 +246,8 @@ pub struct OidcConfig {
     pub subject_claim: Option<String>,
     /// Optional claim name for email.
     pub email_claim: Option<String>,
+    /// Set of organization names to exclude from user orgs.
+    pub org_blacklist: HashSet<String>,
 }
 
 static OIDC_CONFIG: Lazy<ArcSwap<OidcConfig>> = Lazy::new(|| {
@@ -359,6 +363,7 @@ impl OidcConfig {
                 .unwrap_or(OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE.to_owned()),
             subject_claim,
             email_claim,
+            org_blacklist: HashSet::new(), // Default empty blacklist for test method
         }
     }
 
@@ -417,6 +422,13 @@ impl OidcConfig {
         );
         let subject_claim = parse_env(OIDC_SUBJECT_CLAIM, EnvParseMode::StrictNone);
         let email_claim = parse_env(OIDC_EMAIL_CLAIM, EnvParseMode::StrictNone);
+        let org_blacklist = parse_typed_env(
+            OIDC_ORG_BLACKLIST,
+            |val| -> Result<HashSet<String>, std::io::Error> {
+                Ok(val.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect::<HashSet<String>>())
+            },
+            HashSet::new(),
+        );
 
         let http_client_config = HttpClientConfig {
             insecure,
@@ -455,6 +467,7 @@ impl OidcConfig {
             org_claim_pattern,
             subject_claim,
             email_claim,
+            org_blacklist,
         })
     }
 }
@@ -671,12 +684,9 @@ fn log_env_parsing_error<T: std::error::Error>(err: &T, env: &str, val: String) 
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use std::sync::Once;
 
     use super::*;
-
-    static INIT: Once = Once::new();
-
+    
     fn setup_logging() {
         let _ = env_logger::builder()
             .filter_level(log::LevelFilter::Debug)
