@@ -85,33 +85,63 @@ pub async fn login(req: HttpRequest) -> Result<HttpResponse> {
 }
 
 pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::AuthError> {
+    log::debug!("Starting OIDC callback user info retrieval");
     let callback_state: web::Query<CallbackState> =
         web::Query::<CallbackState>::from_query(req.query_string()).map_err(|err| {
+            log::error!("Failed to parse callback query parameters: {}", err);
             AuthError::from_error(
                 err,
                 Some("Failed to parse CallbackState".to_owned()),
                 StatusCode::UNAUTHORIZED,
             )
         })?;
-    let auth_state = extract_auth_state(&req.get_session())?;
+    log::debug!("Successfully parsed callback state: code={}, state={}", callback_state.code.len(), callback_state.state.len());
+
+    let auth_state = extract_auth_state(&req.get_session()).map_err(|err| {
+        log::error!("Failed to extract auth state from session: {}", err);
+        err
+    })?;
+    log::debug!("Successfully extracted auth state from session");
+
     let pkce_verifier = PkceCodeVerifier::new(auth_state.pkce_verifier.clone());
     let state = callback_state.state.clone();
     if state != auth_state.csrf_state {
+        log::error!("CSRF state mismatch: expected={}, received={}", auth_state.csrf_state, state);
         return Err(errors::AuthError::new(
             "Invalid state",
             StatusCode::UNAUTHORIZED,
         ));
     }
+    log::debug!("CSRF state validation passed");
+
     let code = callback_state.code.clone();
-    let client = &create_oidc_client().await?;
-    let response = exchange_code(code, pkce_verifier, &client).await?;
+    let client = &create_oidc_client().await.map_err(|err| {
+        log::error!("Failed to create OIDC client: {}", err);
+        err
+    })?;
+    log::debug!("Successfully created OIDC client");
+
+    let response = exchange_code(code, pkce_verifier, &client).await.map_err(|err| {
+        log::error!("Failed to exchange authorization code for tokens: {}", err);
+        err
+    })?;
+    log::debug!("Successfully exchanged authorization code for tokens");
+
     let token_verifier: IdTokenVerifier<'_, CoreJsonWebKey> = client.id_token_verifier();
     match process_token_response(token_verifier, &Nonce::new(auth_state.nonce), response) {
         Ok(res) => {
-            update_tokens(&req, &res.1)?;
+            log::debug!("Successfully processed token response for user: {}", res.0.email);
+            update_tokens(&req, &res.1).map_err(|err| {
+                log::error!("Failed to update tokens in session: {}", err);
+                err
+            })?;
+            log::debug!("Successfully updated tokens in session");
             Ok(res.0)
         }
-        Err(e) => Err(e),
+        Err(e) => {
+            log::error!("Failed to process token response: {}", e);
+            Err(e)
+        }
     }
 }
 
