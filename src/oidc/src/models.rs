@@ -97,7 +97,7 @@ impl UserInfo {
     pub fn from_claims(token_claims: &CustomTokenClaims) -> Self {
         let custom_claims = token_claims.additional_claims();
         let is_internal = false;
-        let email = token_claims
+        let default_email = token_claims
             .email()
             .map(|e| e.as_str().to_string())
             .unwrap_or_default();
@@ -110,6 +110,14 @@ impl UserInfo {
                         .and_then(|v| v.as_str())
                         .unwrap_or_else(|| token_claims.subject().as_str()),
                     None => token_claims.subject().as_str(),
+                }
+                .to_string();
+                let email = match &oidc_config.email_claim {
+                    Some(custom_email_claim) => ext_map
+                        .get(custom_email_claim)
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(&default_email),
+                    None => &default_email,
                 }
                 .to_string();
                 let orgs = map_claims_to_orgs(
@@ -129,7 +137,7 @@ impl UserInfo {
             }
             None => Self {
                 sub: token_claims.subject().as_str().to_string(),
-                email,
+                email: default_email,
                 orgs: HashSet::new(),
                 org_roles: HashMap::new(),
                 is_internal,
@@ -718,6 +726,7 @@ mod tests {
             Some("groups".to_string()),
             Some(role_pattern),
             None,
+            None,
         );
 
         let roles = map_claims_to_roles(&config, &claims);
@@ -757,6 +766,7 @@ mod tests {
             Some("groups".to_string()),
             Some(org_only_pattern),
             None,
+            None,
         );
 
         let roles = map_claims_to_roles(&config, &claims);
@@ -791,5 +801,98 @@ mod tests {
         assert!(display.contains("..."));
         assert!(display.contains("veryl"));
         assert!(!display.contains("verylongaccesstokenhere")); // full should not be shown
+    }
+
+    #[test]
+    fn test_custom_email_claim() {
+        use crate::config::{set_test_config, clear_test_config};
+
+        // Create a config with custom email claim
+        let config = OidcConfig::new(
+            "test".to_string(),
+            Some("test".to_string()),
+            "https://example.com".to_string(),
+            "https://example.com/callback".to_string(),
+            "https://example.com/callback".to_string(),
+            None, None, None, None, None, None, None, None, None, None, None, None, None,
+            Some("custom_email".to_string()), // custom email claim
+        );
+        set_test_config(config);
+
+        // Create JWT token with custom email claim
+        let claims_json = r#"{
+                "sub": "citizen",
+                "aud": "client",
+                "nbf": 1762941467,
+                "azp": "client",
+                "iss": "http://localhost:8080/default",
+                "custom_email": "custom@example.com",
+                "email": "standard@example.com",
+                "exp": 9999999999,
+                "iat": 1762941467,
+                "jti": "c2a5bf31-29aa-41f6-b101-ae5eeb09164c",
+                "tid": "default"
+                }"#;
+        let id_token_str = format!(
+            "eyJraWQiOiJkZWZhdWx0IiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYifQ.{}.aHUQihTTpVEC1jSjvbm8ikajfRoe1GunqtZw9OHnccu5mQoFVsUS4Dtt_q8m-0BLQknlVl7SxctKE6jd5cvpc1202737O7XrAKDLH94-_tQdzp6Whhk0YcIrRtMyBKrTgMr0wmv0qjZ2U9WB9jx6Soy-w8LFhAQS4rOdFcpHdbVMLRugPFUkRG47_hvj1746VzAdUTV3_Xn4qJMdCelTN1reWMZejZTrA9qJXpfsWM-8tJIDN27-_DpqcwCoBwRZ-dqAcVuBnPmLWAUfV-2pxpu5J0o0w81Zrc7zqtEn7Gr5vaNg8j6sxfpa5yq9chbTEM7si9Fm3kv1LrnflNhKYA",
+            base64::engine::general_purpose::STANDARD_NO_PAD.encode(claims_json)
+        );
+
+        let id_token: CustomToken = CustomToken::from_str(id_token_str.as_str()).unwrap();
+        let verifier = &IdTokenVerifier::<CoreJsonWebKey>::new_insecure_without_verification();
+        let claims: &CustomTokenClaims = id_token.claims(verifier, empty_nonce_verifier()).unwrap();
+        let user_info = UserInfo::from_claims(claims);
+
+        // Should use custom email claim instead of standard email
+        assert_eq!(user_info.email, "custom@example.com");
+        assert_eq!(user_info.sub, "citizen");
+
+        clear_test_config();
+    }
+
+    #[test]
+    fn test_fallback_to_standard_email_claim() {
+        use crate::config::{set_test_config, clear_test_config};
+
+        // Create a config with custom email claim that doesn't exist
+        let config = OidcConfig::new(
+            "test".to_string(),
+            Some("test".to_string()),
+            "https://example.com".to_string(),
+            "https://example.com/callback".to_string(),
+            "https://example.com/callback".to_string(),
+            None, None, None, None, None, None, None, None, None, None, None, None, None,
+            Some("nonexistent_email".to_string()), // custom email claim that doesn't exist
+        );
+        set_test_config(config);
+
+        // Create JWT token with only standard email claim
+        let claims_json = r#"{
+                "sub": "citizen",
+                "aud": "client",
+                "nbf": 1762941467,
+                "azp": "client",
+                "iss": "http://localhost:8080/default",
+                "email": "standard@example.com",
+                "exp": 9999999999,
+                "iat": 1762941467,
+                "jti": "c2a5bf31-29aa-41f6-b101-ae5eeb09164c",
+                "tid": "default"
+                }"#;
+        let id_token_str = format!(
+            "eyJraWQiOiJkZWZhdWx0IiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYifQ.{}.aHUQihTTpVEC1jSjvbm8ikajfRoe1GunqtZw9OHnccu5mQoFVsUS4Dtt_q8m-0BLQknlVl7SxctKE6jd5cvpc1202737O7XrAKDLH94-_tQdzp6Whhk0YcIrRtMyBKrTgMr0wmv0qjZ2U9WB9jx6Soy-w8LFhAQS4rOdFcpHdbVMLRugPFUkRG47_hvj1746VzAdUTV3_Xn4qJMdCelTN1reWMZejZTrA9qJXpfsWM-8tJIDN27-_DpqcwCoBwRZ-dqAcVuBnPmLWAUfV-2pxpu5J0o0w81Zrc7zqtEn7Gr5vaNg8j6sxfpa5yq9chbTEM7si9Fm3kv1LrnflNhKYA",
+            base64::engine::general_purpose::STANDARD_NO_PAD.encode(claims_json)
+        );
+
+        let id_token: CustomToken = CustomToken::from_str(id_token_str.as_str()).unwrap();
+        let verifier = &IdTokenVerifier::<CoreJsonWebKey>::new_insecure_without_verification();
+        let claims: &CustomTokenClaims = id_token.claims(verifier, empty_nonce_verifier()).unwrap();
+        let user_info = UserInfo::from_claims(claims);
+
+        // Should fall back to standard email claim
+        assert_eq!(user_info.email, "standard@example.com");
+        assert_eq!(user_info.sub, "citizen");
+
+        clear_test_config();
     }
 }
