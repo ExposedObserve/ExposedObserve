@@ -223,7 +223,7 @@ pub struct OidcConfig {
     /// The client ID provided by the OIDC provider.
     pub client_id: ClientId,
     /// The client secret for authenticating with the OIDC provider.
-    pub client_secret: ClientSecret,
+    pub client_secret: Option<ClientSecret>,
     /// The issuer URL of the OIDC provider.
     pub issuer_url: IssuerUrl,
     /// The redirect URL after successful authentication.
@@ -292,7 +292,7 @@ impl OidcConfig {
     #[cfg(test)]
     pub(crate) fn new(
         client_id: String,
-        client_secret: String,
+        client_secret: Option<String>,
         issuer_url: String,
         redirect_url: String,
         callback_url: String,
@@ -320,9 +320,12 @@ impl OidcConfig {
                 .unwrap_or(OIDC_POOL_MAX_IDLE_PER_HOST_DEFAULT_VALUE),
         };
 
+        // SameSite=None requires Secure=true according to browser specs
+        let resolved_same_site = same_site.unwrap_or(OIDC_COOKIE_SAME_SITE_DEFAULT_VALUE);
+        let secure = if resolved_same_site == SameSite::None { true } else { !insecure };
         let cookie_config = CookieConfig {
-            secure: !insecure,
-            same_site: same_site.unwrap_or(OIDC_COOKIE_SAME_SITE_DEFAULT_VALUE),
+            secure,
+            same_site: resolved_same_site,
             cookie_max_age: cookie_max_age
                 .map(convert_duration)
                 .unwrap_or(convert_duration(OIDC_COOKIE_MAX_AGE_SEC_DEFAULT_VALUE)),
@@ -340,7 +343,7 @@ impl OidcConfig {
 
         OidcConfig {
             client_id: ClientId::new(client_id),
-            client_secret: ClientSecret::new(client_secret),
+            client_secret: client_secret.map(ClientSecret::new),
             issuer_url: IssuerUrl::new(issuer_url).unwrap(),
             redirect_url: RedirectUrl::new(redirect_url).unwrap(),
             callback_url,
@@ -357,7 +360,7 @@ impl OidcConfig {
         dotenv().ok();
 
         let client_id = ClientId::new(parse_required_env(OIDC_CLIENT_ID));
-        let client_secret = ClientSecret::new(parse_required_env(OIDC_CLIENT_SECRET));
+        let client_secret = parse_env(OIDC_CLIENT_SECRET, EnvParseMode::StrictNone).map(ClientSecret::new);
         let issuer_url = parse_url::<IssuerUrl>(OIDC_ISSUER_URL);
         let redirect_url = parse_url::<RedirectUrl>(OIDC_REDIRECT_URL);
         let callback_url = parse_required_env(OIDC_CALLBACK_URL);
@@ -416,8 +419,10 @@ impl OidcConfig {
             pool_max_idle_per_host,
         };
 
+        // SameSite=None requires Secure=true according to browser specs
+        let secure = if same_site == SameSite::None { true } else { !insecure };
         let cookie_config = CookieConfig {
-            secure: !insecure,
+            secure,
             same_site,
             cookie_max_age,
         };
@@ -703,6 +708,9 @@ pub(crate) mod tests {
 
     #[test]
     fn test_parse_same_site_env_missing() {
+        unsafe {
+            std::env::remove_var(OIDC_COOKIE_SAME_SITE);
+        }
         assert_eq!(parse_same_site_env(), OIDC_COOKIE_SAME_SITE_DEFAULT_VALUE);
     }
 
@@ -850,6 +858,7 @@ pub(crate) mod tests {
     #[test]
     fn test_parse_session_lifecycle_env_present() {
         unsafe {
+            std::env::remove_var("OIDC_SESSION_LIFECYCLE");
             std::env::set_var("OIDC_SESSION_LIFECYCLE", "persistent");
         }
         assert!(matches!(
@@ -969,7 +978,7 @@ pub(crate) mod tests {
         let config = result.unwrap();
 
         assert_eq!(config.client_id.as_str(), "test-client-id");
-        assert_eq!(config.client_secret.secret(), "test-client-secret");
+        assert_eq!(config.client_secret.as_ref().unwrap().secret(), "test-client-secret");
         assert_eq!(config.issuer_url.as_str(), "https://example.com");
         assert_eq!(config.redirect_url.as_str(), "https://example.com/callback");
         assert_eq!(config.callback_url, "https://example.com/app-callback");
@@ -1021,11 +1030,31 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn test_same_site_none_forces_secure() {
+        // Test that SameSite::None automatically sets secure=true
+        let config = OidcConfig::new(
+            "test".to_string(),
+            Some("secret".to_string()),
+            "https://example.com".to_string(),
+            "https://example.com/callback".to_string(),
+            "https://example.com/callback".to_string(),
+            Some(true), // insecure=true, but SameSite::None should override
+            None, None, None, None,
+            Some(SameSite::None), // SameSite::None
+            None, None, None, None, None, None, None
+        );
+
+        // Should be secure=true despite insecure=true
+        assert_eq!(config.session_config.cookie_config.secure, true);
+        assert_eq!(config.session_config.cookie_config.same_site, SameSite::None);
+    }
+
+    #[test]
     fn test_thread_local_config_isolation() {
         // Создаём тестовый конфиг с кастомными настройками
         let test_config = OidcConfig::new(
             "thread-local-client".to_string(),
-            "thread-local-secret".to_string(),
+            Some("thread-local-secret".to_string()),
             "https://thread-local.example.com".to_string(),
             "https://thread-local.example.com/callback".to_string(),
             "https://thread-local.example.com/app".to_string(),
@@ -1040,7 +1069,7 @@ pub(crate) mod tests {
         // Проверяем, что get_oidc_config() возвращает наш тестовый конфиг
         let retrieved_config = get_oidc_config();
         assert_eq!(retrieved_config.client_id.as_str(), "thread-local-client");
-        assert_eq!(retrieved_config.client_secret.secret(), "thread-local-secret");
+        assert_eq!(retrieved_config.client_secret.as_ref().unwrap().secret(), "thread-local-secret");
         assert_eq!(retrieved_config.http_client_config.insecure, true);
         assert_eq!(retrieved_config.http_client_config.timeout, std::time::Duration::from_secs(30));
 

@@ -701,7 +701,7 @@ mod tests {
 
         let config = OidcConfig::new(
             "test".to_string(),
-            "test".to_string(),
+            Some("test".to_string()),
             "https://example.com".to_string(),
             "https://example.com/callback".to_string(),
             "https://example.com/callback".to_string(),
@@ -740,7 +740,7 @@ mod tests {
         // Mock config that only has org pattern (no role group)
         let config = OidcConfig::new(
             "test".to_string(),
-            "test".to_string(),
+            Some("test".to_string()),
             "https://example.com".to_string(),
             "https://example.com/callback".to_string(),
             "https://example.com/callback".to_string(),

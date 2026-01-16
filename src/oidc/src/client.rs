@@ -237,7 +237,7 @@ async fn create_oidc_client() -> Result<CustomClient, AuthError> {
     let client: CustomClient = CustomClient::from_provider_metadata(
         create_oidc_metadata(&config).await?,
         config.client_id.clone(),
-        Some(config.client_secret.clone()),
+        config.client_secret.clone(),
     )
     .set_redirect_uri(config.redirect_url.clone());
     Ok(client)
@@ -433,7 +433,7 @@ pub(crate) mod tests {
 
         let test_config = config::OidcConfig::new(
             "client".to_string(),
-            "secret".to_string(),
+            Some("secret".to_string()),
             format!("{}/default", uri),
             format!("{}/redirect", uri),
             format!("{}/callback", uri),
