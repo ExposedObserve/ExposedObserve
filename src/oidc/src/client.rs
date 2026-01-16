@@ -438,7 +438,7 @@ pub(crate) mod tests {
             format!("{}/redirect", uri),
             format!("{}/callback", uri),
             Some(true), // insecure
-            None, None, None, None, None, None, None, None, None, None, None, None
+            None, None, None, None, None, None, None, None, None, None, None, None, None
         );
         config::set_test_config(test_config);
 

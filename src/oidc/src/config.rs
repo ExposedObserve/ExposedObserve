@@ -89,6 +89,8 @@ pub(crate) static OIDC_ORG_CLAIM: &str = "OIDC_ORG_CLAIM";
 pub(crate) static OIDC_ORG_CLAIM_PATTERN: &str = "OIDC_ORG_CLAIM_PATTERN";
 /// Environment variable name for subject/user identifier claim name.
 pub(crate) static OIDC_SUBJECT_CLAIM: &str = "OIDC_SUBJECT_CLAIM";
+/// Environment variable name for email claim name.
+pub(crate) static OIDC_EMAIL_CLAIM: &str = "OIDC_EMAIL_CLAIM";
 /// Environment variable name for session store type (cookie or redis).
 pub(crate) static OIDC_SESSION_STORE: &str = "OIDC_SESSION_STORE";
 /// Environment variable name for Redis URL for session storage.
@@ -240,6 +242,8 @@ pub struct OidcConfig {
     pub org_claim_pattern: Regex,
     /// Optional claim name for subject (user identifier).
     pub subject_claim: Option<String>,
+    /// Optional claim name for email.
+    pub email_claim: Option<String>,
 }
 
 static OIDC_CONFIG: Lazy<ArcSwap<OidcConfig>> = Lazy::new(|| {
@@ -309,6 +313,7 @@ impl OidcConfig {
         org_claim: Option<String>,
         org_claim_pattern: Option<Regex>,
         subject_claim: Option<String>,
+        email_claim: Option<String>,
     ) -> Self {
         let insecure = insecure.unwrap_or(OIDC_INSECURE_DEFAULT_VALUE);
         let http_client_config = HttpClientConfig {
@@ -353,6 +358,7 @@ impl OidcConfig {
             org_claim_pattern: org_claim_pattern
                 .unwrap_or(OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE.to_owned()),
             subject_claim,
+            email_claim,
         }
     }
 
@@ -410,6 +416,7 @@ impl OidcConfig {
             OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE.to_owned(),
         );
         let subject_claim = parse_env(OIDC_SUBJECT_CLAIM, EnvParseMode::StrictNone);
+        let email_claim = parse_env(OIDC_EMAIL_CLAIM, EnvParseMode::StrictNone);
 
         let http_client_config = HttpClientConfig {
             insecure,
@@ -447,6 +454,7 @@ impl OidcConfig {
             org_claim,
             org_claim_pattern,
             subject_claim,
+            email_claim,
         })
     }
 }
@@ -1041,7 +1049,7 @@ pub(crate) mod tests {
             Some(true), // insecure=true, but SameSite::None should override
             None, None, None, None,
             Some(SameSite::None), // SameSite::None
-            None, None, None, None, None, None, None
+            None, None, None, None, None, None, None, None
         );
 
         // Should be secure=true despite insecure=true
@@ -1060,7 +1068,7 @@ pub(crate) mod tests {
             "https://thread-local.example.com/app".to_string(),
             Some(true), // insecure: true для теста
             Some(std::time::Duration::from_secs(30)), // custom timeout
-            None, None, None, None, None, None, None, None, None, None, None
+            None, None, None, None, None, None, None, None, None, None, None, None
         );
 
         // Устанавливаем в thread-local
