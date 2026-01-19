@@ -7,13 +7,16 @@ WORKDIR /web
 COPY ./web/package*.json ./
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm ci && \
+    chmod -R a+rw /root/.npm
 
 COPY ./web/ .
 
 RUN --mount=type=cache,target=/web/node_modules/.vite \
     --mount=type=cache,target=/web/node_modules/.cache \
-    NODE_OPTIONS="--max-old-space-size=8192" npm run build
+    NODE_OPTIONS="--max-old-space-size=8192" npm run build && \
+    chown -R 1001:1001 /root/.npm /web/node_modules/.vite /web/node_modules/.cache && \
+    chmod -R a+rw /root/.npm /web/node_modules/.vite /web/node_modules/.cache
 
 FROM public.ecr.aws/docker/library/rust:slim-bookworm AS builder
 
@@ -46,6 +49,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release --features mimalloc --jobs "$CARGO_JOBS" && \
     mkdir -p /out && \
     cp target/release/exposedobserve /out/exposedobserve && \
+    chown -R 1001:1001 /exposedobserve/target /usr/local/cargo/registry /usr/local/cargo/git /usr/local/rustup && \
     chmod -R a+rw /exposedobserve/target /usr/local/cargo/registry /usr/local/cargo/git /usr/local/rustup
 
 FROM public.ecr.aws/debian/debian:trixie-slim AS runtime
