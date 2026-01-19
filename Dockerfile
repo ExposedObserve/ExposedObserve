@@ -45,7 +45,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/exposedobserve/target \
     cargo build --release --features mimalloc --jobs "$CARGO_JOBS" && \
     mkdir -p /out && \
-    cp target/release/exposedobserve /out/exposedobserve
+    cp target/release/exposedobserve /out/exposedobserve && \
+    chmod -R a+rw /exposedobserve/target /usr/local/cargo/registry /usr/local/cargo/git /usr/local/rustup
 
 FROM public.ecr.aws/debian/debian:trixie-slim AS runtime
 
