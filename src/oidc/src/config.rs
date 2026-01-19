@@ -104,7 +104,6 @@ static SENSITIVE_ENVS: Lazy<HashSet<&str>> = Lazy::new(|| HashSet::from([OIDC_CL
 pub(crate) static ORG_CAPTURE_GROUP: &str = "org";
 pub(crate) static ROLE_CAPTURE_GROUP: &str = "role";
 pub(crate) static AUTH_STATE: &str = "auth_state";
-pub(crate) static AUTH_TOKENS_COOKIE: &str = "auth_tokens";
 pub(crate) static AUTH_TOKENS_SESSION_KEY: &str = "auth_tokens";
 pub(crate) static OIDC_SESSION_FLAG: &str = "oidc";
 

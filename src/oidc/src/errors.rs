@@ -29,7 +29,7 @@ use openidconnect::{
     ClaimsVerificationError, ConfigurationError, SignatureVerificationError, SigningError,
 };
 
-use crate::{config, cookies::clear_all_auth_cookies};
+use crate::config;
 
 #[derive(Debug)]
 pub struct AuthError {
@@ -122,7 +122,6 @@ impl actix_web::error::ResponseError for AuthError {
 
 pub fn auth_failure_response(msg: Option<String>, status_code: StatusCode) -> HttpResponse {
     let resp_builder = &mut HttpResponseBuilder::new(status_code);
-    clear_all_auth_cookies(resp_builder);
     let config = config::get_oidc_config();
     let login_url = config.callback_url.as_str();
     resp_builder.append_header(("Location", login_url));
