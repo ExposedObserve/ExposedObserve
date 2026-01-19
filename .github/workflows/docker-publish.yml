@@ -139,5 +139,5 @@ jobs:
             CARGO_JOBS=4
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=${{ github.repository }}
-          cache-to: type=gha,mode=max,scope=${{ github.repository }}
+          # cache-from: type=gha,scope=${{ github.repository }}
+          # cache-to: type=gha,mode=max,scope=${{ github.repository }}
