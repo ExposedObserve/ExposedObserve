@@ -38,7 +38,6 @@ use tokio::sync::OnceCell;
 
 use crate::{
     config::{self, OidcConfig},
-    cookies::clear_all_auth_cookies,
     errors::{self, AuthError, error_message_formatter},
     http::get_http_client,
     models::{
@@ -50,7 +49,6 @@ use crate::{
 
 pub async fn logout(req: HttpRequest) -> Result<HttpResponse> {
     let mut response_builder = HttpResponse::Ok();
-    clear_all_auth_cookies(&mut response_builder);
     req.get_session().purge();
     Ok(response_builder.finish())
 }
@@ -61,6 +59,7 @@ pub async fn login(req: HttpRequest) -> Result<HttpResponse> {
     let (auth_url, csrf_state, nonce) = match create_authorize_url(pkce_challenge).await {
         Ok(res) => res,
         Err(e) => {
+            req.get_session().purge();
             return Ok(ErrorInternalServerError(e.to_string()).error_response());
         }
     };
@@ -89,6 +88,7 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
     let callback_state: web::Query<CallbackState> =
         web::Query::<CallbackState>::from_query(req.query_string()).map_err(|err| {
             log::error!("Failed to parse callback query parameters: {}", err);
+            req.get_session().purge();
             AuthError::from_error(
                 err,
                 Some("Failed to parse CallbackState".to_owned()),
@@ -99,6 +99,7 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
 
     let auth_state = extract_auth_state(&req.get_session()).map_err(|err| {
         log::error!("Failed to extract auth state from session: {}", err);
+        req.get_session().purge();
         err
     })?;
     log::debug!("Successfully extracted auth state from session");
@@ -107,6 +108,7 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
     let state = callback_state.state.clone();
     if state != auth_state.csrf_state {
         log::error!("CSRF state mismatch: expected={}, received={}", auth_state.csrf_state, state);
+        req.get_session().purge();
         return Err(errors::AuthError::new(
             "Invalid state",
             StatusCode::UNAUTHORIZED,
@@ -116,12 +118,14 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
 
     let code = callback_state.code.clone();
     let client = &create_oidc_client().await.map_err(|err| {
+        req.get_session().purge();
         log::error!("Failed to create OIDC client: {}", err);
         err
     })?;
     log::debug!("Successfully created OIDC client");
 
     let response = exchange_code(code, pkce_verifier, &client).await.map_err(|err| {
+        req.get_session().purge();
         log::error!("Failed to exchange authorization code for tokens: {}", err);
         err
     })?;
@@ -132,6 +136,7 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
         Ok(res) => {
             log::debug!("Successfully processed token response for user: {}", res.0.email);
             update_tokens(&req, &res.1).map_err(|err| {
+                req.get_session().purge();
                 log::error!("Failed to update tokens in session: {}", err);
                 err
             })?;
@@ -140,6 +145,7 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
             Ok(res.0)
         }
         Err(e) => {
+            req.get_session().purge();
             log::error!("Failed to process token response: {}", e);
             Err(e)
         }

@@ -27,12 +27,11 @@ use actix_session::{
     storage::{CookieSessionStore, RedisSessionStore, SessionStore},
 };
 use actix_web::{HttpRequest, cookie::Key, http::StatusCode};
-use base64::Engine;
 use log::{Level, error};
 
 use crate::{
     config::{
-        self, AUTH_STATE, AUTH_TOKENS_COOKIE, AUTH_TOKENS_SESSION_KEY, OIDC_SESSION_FLAG,
+        self, AUTH_STATE, AUTH_TOKENS_SESSION_KEY, OIDC_SESSION_FLAG,
         SessionConfig, get_oidc_config,
     },
     errors::AuthError,
@@ -147,23 +146,6 @@ fn session_middleware<S: SessionStore>(
         .cookie_content_security(cookie_content_security)
         .cookie_http_only(config.cookie_config.secure)
         .build()
-}
-
-/// Retrieves authentication tokens from the client-side cookie.
-///
-/// This function extracts and decodes the base64-encoded AuthTokens stored
-/// in the "auth_tokens" cookie for client-side authentication token storage.
-/// Returns None if the cookie doesn't exist or decoding/deserialization fails.
-pub fn get_tokens(req: &HttpRequest) -> Option<AuthTokens> {
-    let cookie = req.cookie(AUTH_TOKENS_COOKIE)?;
-    let cookie_value = cookie.value();
-    let decoded = base64::engine::general_purpose::STANDARD_NO_PAD
-        .decode(cookie_value)
-        .inspect_err(|e| error!("Tokens decoding error\n{}", e))
-        .ok()?;
-    serde_json::from_slice::<AuthTokens>(&decoded)
-        .inspect_err(|e| error!("Tokens deserializing error\n{}", e))
-        .ok()
 }
 
 /// Retrieves authentication tokens stored in the server-side session.
@@ -334,61 +316,6 @@ mod tests {
         // Test the error response contains expected content
         let err = result.unwrap_err();
         assert_eq!(err.status_code, StatusCode::UNAUTHORIZED);
-    }
-
-    #[test]
-    fn test_get_tokens_success() {
-        let expected_tokens = AuthTokens {
-            expires_in: Some(std::time::Duration::from_secs(3600)),
-            access_token: "access".into(),
-            refresh_token: "refresh".into(),
-            id_token: "id".into(),
-        };
-
-        let json = serde_json::to_string(&expected_tokens).unwrap();
-        let encoded: String = base64::engine::general_purpose::STANDARD_NO_PAD.encode(json);
-
-        let req = TestRequest::default()
-            .cookie(cookie::Cookie::new("auth_tokens", encoded))
-            .to_http_request();
-
-        let result = get_tokens(&req);
-        assert!(result.is_some());
-
-        let tokens = result.unwrap();
-        assert_eq!(tokens.access_token, expected_tokens.access_token);
-        assert_eq!(tokens.refresh_token, expected_tokens.refresh_token);
-        assert_eq!(tokens.id_token, expected_tokens.id_token);
-        assert_eq!(tokens.expires_in, expected_tokens.expires_in);
-    }
-
-    #[test]
-    fn test_get_tokens_no_cookie() {
-        let req = TestRequest::default().to_http_request();
-        let result = get_tokens(&req);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_get_tokens_invalid_base64() {
-        let req = TestRequest::default()
-            .cookie(cookie::Cookie::new("auth_tokens", "invalid_base64"))
-            .to_http_request();
-
-        let result = get_tokens(&req);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_get_tokens_invalid_json() {
-        let encoded: String =
-            base64::engine::general_purpose::STANDARD_NO_PAD.encode("invalid json");
-        let req = TestRequest::default()
-            .cookie(cookie::Cookie::new("auth_tokens", encoded))
-            .to_http_request();
-
-        let result = get_tokens(&req);
-        assert!(result.is_none());
     }
 
     #[test]
