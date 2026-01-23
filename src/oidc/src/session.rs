@@ -182,6 +182,26 @@ pub(crate) fn update_tokens(
     Ok(())
 }
 
+pub(crate) fn remove_session(req: &HttpRequest) {
+    let session = req.get_session();
+    session.purge();
+}
+
+/// Resets the OIDC authentication state in the session.
+///
+/// Removes the OIDC flag and authentication tokens from the session
+/// without completely destroying the session. Used when token refresh
+/// fails to clear invalid authentication state while preserving
+/// other session data.
+///
+/// # Arguments
+/// * `session` - The session to reset
+pub(crate) fn session_reset(session: &Session) {
+    session.remove(OIDC_SESSION_FLAG);
+    session.remove(AUTH_TOKENS_SESSION_KEY);
+    log::debug!("Session reset - oidc flag and tokens removed");
+}
+
 /// Debug function to log session contents for troubleshooting.
 ///
 /// This function logs the keys present in the session without exposing
@@ -269,7 +289,7 @@ fn is_trace_or_debug_enabled() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use actix_web::{cookie, test::TestRequest};
+    use actix_web::test::TestRequest;
 
     use super::*;
 

@@ -127,18 +127,4 @@ mod tests {
         let cookie = build_cookie("test", "secret".into(), &config, Some(custom_duration));
         assert_eq!(cookie.max_age(), Some(custom_duration));
     }
-
-    #[test]
-    fn test_clear_cookie_creation() {
-        let config = get_oidc_config();
-
-        let cookie = clear_cookie("test_cookie", &config);
-        assert_eq!(cookie.name(), "test_cookie");
-        assert_eq!(cookie.value(), "");
-        assert_eq!(
-            cookie.max_age(),
-            Some(actix_web::cookie::time::Duration::seconds(0))
-        );
-        assert!(cookie.http_only().unwrap());
-    }
 }

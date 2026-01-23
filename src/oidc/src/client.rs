@@ -44,12 +44,14 @@ use crate::{
         self, AuthTokens, AuthorizationState, CallbackState, CustomClient, CustomToken,
         CustomTokenResponse, UserInfo,
     },
-    session::{extract_auth_state, insert_auth_state, log_session_contents, update_tokens},
+    session::{
+        extract_auth_state, insert_auth_state, log_session_contents, remove_session, update_tokens,
+    },
 };
 
 pub async fn logout(req: HttpRequest) -> Result<HttpResponse> {
     let mut response_builder = HttpResponse::Ok();
-    req.get_session().purge();
+    remove_session(&req);
     Ok(response_builder.finish())
 }
 
@@ -95,7 +97,11 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
                 StatusCode::UNAUTHORIZED,
             )
         })?;
-    log::debug!("Successfully parsed callback state: code={}, state={}", callback_state.code.len(), callback_state.state.len());
+    log::debug!(
+        "Successfully parsed callback state: code={}, state={}",
+        callback_state.code.len(),
+        callback_state.state.len()
+    );
 
     let auth_state = extract_auth_state(&req.get_session()).map_err(|err| {
         log::error!("Failed to extract auth state from session: {}", err);
@@ -107,7 +113,11 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
     let pkce_verifier = PkceCodeVerifier::new(auth_state.pkce_verifier.clone());
     let state = callback_state.state.clone();
     if state != auth_state.csrf_state {
-        log::error!("CSRF state mismatch: expected={}, received={}", auth_state.csrf_state, state);
+        log::error!(
+            "CSRF state mismatch: expected={}, received={}",
+            auth_state.csrf_state,
+            state
+        );
         req.get_session().purge();
         return Err(errors::AuthError::new(
             "Invalid state",
@@ -124,17 +134,22 @@ pub async fn retrieve_user_info(req: HttpRequest) -> Result<UserInfo, errors::Au
     })?;
     log::debug!("Successfully created OIDC client");
 
-    let response = exchange_code(code, pkce_verifier, &client).await.map_err(|err| {
-        req.get_session().purge();
-        log::error!("Failed to exchange authorization code for tokens: {}", err);
-        err
-    })?;
+    let response = exchange_code(code, pkce_verifier, &client)
+        .await
+        .map_err(|err| {
+            req.get_session().purge();
+            log::error!("Failed to exchange authorization code for tokens: {}", err);
+            err
+        })?;
     log::debug!("Successfully exchanged authorization code for tokens");
 
     let token_verifier: IdTokenVerifier<'_, CoreJsonWebKey> = client.id_token_verifier();
     match process_token_response(token_verifier, &Nonce::new(auth_state.nonce), response) {
         Ok(res) => {
-            log::debug!("Successfully processed token response for user: {}", res.0.email);
+            log::debug!(
+                "Successfully processed token response for user: {}",
+                res.0.email
+            );
             update_tokens(&req, &res.1).map_err(|err| {
                 req.get_session().purge();
                 log::error!("Failed to update tokens in session: {}", err);
@@ -352,7 +367,7 @@ pub(crate) mod tests {
 
     static INIT: Once = Once::new();
 
-        fn generate_keys(uri: &String) -> (JwkSet, String) {
+    fn generate_keys(uri: &String) -> (JwkSet, String) {
         let private_key = RsaPrivateKey::new(&mut rand::rngs::OsRng, 2048).unwrap();
 
         let encoding_key =
@@ -382,8 +397,11 @@ pub(crate) mod tests {
         });
 
         let id_token = encode(&header, &claims, &encoding_key).unwrap();
-        let jwk_item = jsonwebtoken::jwk::Jwk::from_encoding_key(&encoding_key, Algorithm::RS256).unwrap();
-        let jwk_set: JwkSet = JwkSet{ keys: vec![jwk_item] };
+        let jwk_item =
+            jsonwebtoken::jwk::Jwk::from_encoding_key(&encoding_key, Algorithm::RS256).unwrap();
+        let jwk_set: JwkSet = JwkSet {
+            keys: vec![jwk_item],
+        };
         (jwk_set, id_token)
     }
 
@@ -475,7 +493,19 @@ pub(crate) mod tests {
             format!("{}/redirect", uri),
             format!("{}/callback", uri),
             Some(true), // insecure
-            None, None, None, None, None, None, None, None, None, None, None, None, None
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
         );
         config::set_test_config(test_config);
 
