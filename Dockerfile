@@ -6,19 +6,16 @@ WORKDIR /web
 
 COPY ./web/package*.json ./
 
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci && \
-    chmod -R a+rw /root/.npm
+RUN --mount=type=cache,id=npm,target=/root/.npm \
+    npm ci
 
 COPY ./web/ .
 
-RUN --mount=type=cache,target=/web/node_modules/.vite \
-    --mount=type=cache,target=/web/node_modules/.cache \
-    NODE_OPTIONS="--max-old-space-size=8192" npm run build && \
-    chown -R 1001:1001 /root/.npm /web/node_modules/.vite /web/node_modules/.cache && \
-    chmod -R a+rw /root/.npm /web/node_modules/.vite /web/node_modules/.cache
+RUN --mount=type=cache,id=vite,target=/web/node_modules/.vite \
+    --mount=type=cache,id=node,target=/web/node_modules/.cache \
+    NODE_OPTIONS="--max-old-space-size=8192" npm run build
 
-FROM public.ecr.aws/docker/library/rust:slim-bookworm AS builder
+FROM public.ecr.aws/docker/library/rust:slim-bookworm AS rustbuilder
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
@@ -26,14 +23,16 @@ RUN apt-get update && apt-get install -y \
     lld \
     clang \
     protobuf-compiler \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    curl
 
 WORKDIR /exposedobserve
 
 COPY . ./
 
-COPY --from=webbuilder /web/dist web/dist
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git/db \
+    --mount=type=cache,id=rustup,target=/usr/local/rustup \
+    cargo fetch
 
 ARG GIT_VERSION=v0.0.0
 ARG GIT_COMMIT_HASH=dev
@@ -42,15 +41,14 @@ ARG CARGO_JOBS=2
 ENV GIT_VERSION=$GIT_VERSION
 ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/usr/local/rustup \
-    --mount=type=cache,target=/exposedobserve/target \
+COPY --from=webbuilder /web/dist web/dist
+
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git/db \
+    --mount=type=cache,id=rustup,target=/usr/local/rustup \
     cargo build --release --features mimalloc --jobs "$CARGO_JOBS" && \
     mkdir -p /out && \
-    cp target/release/exposedobserve /out/exposedobserve && \
-    chown -R 1001:1001 /exposedobserve/target /usr/local/cargo/registry /usr/local/cargo/git /usr/local/rustup && \
-    chmod -R a+rw /exposedobserve/target /usr/local/cargo/registry /usr/local/cargo/git /usr/local/rustup
+    cp target/release/exposedobserve /out/exposedobserve
 
 FROM public.ecr.aws/debian/debian:trixie-slim AS runtime
 
@@ -67,7 +65,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
-COPY --from=builder /out/exposedobserve /exposedobserve
+COPY --from=rustbuilder /out/exposedobserve /exposedobserve
 
 RUN ["/exposedobserve", "init-dir", "-p", "/data/"]
 CMD ["/exposedobserve"]

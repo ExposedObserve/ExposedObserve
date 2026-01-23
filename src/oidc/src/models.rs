@@ -44,7 +44,7 @@ use serde_json::Value;
 use crate::{
     client::{exchange_refresh_token, try_to_verify_token},
     config::{ORG_CAPTURE_GROUP, OidcConfig, ROLE_CAPTURE_GROUP, get_oidc_config},
-    session::get_session_tokens,
+    session::{get_session_tokens, session_reset},
 };
 
 /// User information extracted from OIDC token claims.
@@ -153,15 +153,26 @@ impl FromRequest for UserInfo {
     type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &actix_web::HttpRequest, _: &mut Payload) -> Self::Future {
-        if !req.get_session().contains_key("oidc") {
+        let session = req.get_session();
+        if !session.contains_key("oidc") {
             // For original oo_validator
             return ready(Ok(UserInfo::internal())).boxed_local();
         }
-        let session = req.get_session();
-        match get_session_tokens(req) {
-            None => async move { Err(actix_web::error::ErrorUnauthorized("Unauthorized Access")) }
-                .boxed_local(),
-            Some(tokens) => async move {
+
+        // Validate session integrity - both oidc flag and tokens must be present
+        let tokens = match get_session_tokens(req) {
+            Some(tokens) => tokens,
+            None => {
+                log::warn!("Session integrity violation: oidc flag present but no tokens");
+                session_reset(&session);
+                return async move { Err(actix_web::error::ErrorUnauthorized("Unauthorized Access")) }
+                    .boxed_local();
+            }
+        };
+
+        // Clone session after validation (session is still intact)
+        let session_clone = session.clone();
+        async move {
                 let token = match &tokens.id_token.is_empty() {
                     true => &tokens.access_token,
                     false => &tokens.id_token,
@@ -170,17 +181,20 @@ impl FromRequest for UserInfo {
                     Some(user_info) => Ok(user_info),
                     None => match exchange_refresh_token(tokens).await {
                         Ok((new_info, new_tokens)) => {
-                            session.insert("oidc", true)?;
-                            session.insert("auth_tokens", &new_tokens)?;
-                            session.renew();
+                            session_clone.insert("oidc", true)?;
+                            session_clone.insert("auth_tokens", &new_tokens)?;
+                            session_clone.renew();
                             Ok(new_info)
                         }
-                        Err(e) => Err(e)?,
+                        Err(e) => {
+                            log::warn!("Token refresh failed, resetting session: {}", e);
+                            session_reset(&session_clone);
+                            Err(e)?
+                        }
                     },
                 }
             }
-            .boxed_local(),
-        }
+            .boxed_local()
     }
 }
 

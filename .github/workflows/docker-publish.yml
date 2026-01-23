@@ -63,6 +63,7 @@ jobs:
           swap-size-gb: 10
 
       - name: Set up Docker Buildx
+        id: setup-buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to the Container registry
@@ -71,65 +72,111 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Cache Node
+        uses: actions/cache@v5
+        id: cache-npm
+        with:
+          path: |
+            cache-npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+       
+      - name: Cache Node
+        uses: actions/cache@v5
+        id: cache-node
+        with:
+          path: |
+            cache-node
+            cache-vite
+          key: ${{ runner.os }}-node-${{ hashFiles('web/package-lock.json', 'web/vite.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ hashFiles('web/package-lock.json', 'web/vite.config.ts') }}
+       
+      - name: Cache Rustup
+        uses: actions/cache@v5
+        id: cache-rustup
+        with:
+          path: |
+            cache-rustup
+          key: ${{ runner.os }}-rustup-${{ hashFiles('rust-toolchain.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-rustup-${{ hashFiles('rust-toolchain.toml') }}
 
-      - name: Cache Rust
-        uses: actions/cache@v4
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        id: cache-cargo
         with:
           path: |
             cache-cargo-registry
             cache-cargo-git
-            cache-cargo-rustup
-            cache-cargo-target
-          key: ${{ runner.os }}-rust-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-rust-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            ${{ runner.os }}-cargo-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
 
-      - name: Cache Vue
-        uses: actions/cache@v4
-        with:
-          path: |
-            cache-npm
-            cache-vue-build
-            cache-vue-vite
-          key: ${{ runner.os }}-vue-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-vue-
-    
-      - name: Install cargo-sweep
-        uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-sweep
-
-      # 2. Чистим папку target
-      - name: Clean Rust Cache
-        run: |
-          echo "Cleaning target folder..."
-          cargo sweep --time 7 --recursive cache-cargo-target
-          # rm -rf cache-cargo-target/release/incremental
-
-      - name: Inject Rust Cache
+      - name: Restore Npm cache
         uses: reproducible-containers/buildkit-cache-dance@v3
         with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
           cache-map: |
             {
-              "cache-cargo-registry": "/usr/local/cargo/registry",
-              "cache-cargo-git": "/usr/local/cargo/git",
-              "cache-cargo-rustup": "/usr/local/rustup",
-              "cache-cargo-target": "/exposedobserve/target"
+              "cache-npm": {
+                "target": "/root/.npm",
+                "id": "npm"
+              }
             }
-
-      - name: Inject Frontend Cache
+          skip-extraction: ${{ steps.cache-npm.outputs.cache-hit }}
+          
+      - name: Restore Node cache
         uses: reproducible-containers/buildkit-cache-dance@v3
         with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
           cache-map: |
             {
-              "cache-npm": "/root/.npm",
-              "cache-vue-vite": "/web/node_modules/.vite",
-              "cache-vue-build": "/web/node_modules/.cache"
+              "cache-node": {
+                "target": "/web/node_modules/.cache",
+                "id": "node"
+              },
+              "cache-vite": {
+                "target": "/web/node_modules/.vite",
+                "id": "vite"
+              }
             }
+          skip-extraction: ${{ steps.cache-node.outputs.cache-hit }}
+
+      - name: Restore Rust cache
+        uses: reproducible-containers/buildkit-cache-dance@v3
+        with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          cache-map: |
+            {
+              "cache-rustup": {
+                "target": "/usr/local/rustup",
+                "id": "rustup"
+              }
+            }
+          skip-extraction: ${{ steps.cache-rustup.outputs.cache-hit }}
+
+      - name: Restore Cargo cache
+        uses: reproducible-containers/buildkit-cache-dance@v3
+        with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          cache-map: |
+            {
+              "cache-cargo-registry": {
+                "target": "/usr/local/cargo/registry",
+                "id": "cargo-registry"
+              },
+              "cache-cargo-git": {
+                "target": "/usr/local/cargo/git/db",
+                "id": "cargo-git"
+              }
+            }
+          skip-extraction: ${{ steps.cache-cargo.outputs.cache-hit }}
 
       - name: Build and push amd64
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64
@@ -139,5 +186,3 @@ jobs:
             CARGO_JOBS=4
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          # cache-from: type=gha,scope=${{ github.repository }}
-          # cache-to: type=gha,mode=max,scope=${{ github.repository }}
