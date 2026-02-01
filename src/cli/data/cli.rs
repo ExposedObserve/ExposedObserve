@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -73,7 +74,7 @@ impl Default for Cli {
 }
 
 fn command_args() -> clap::Command {
-    clap::Command::new("openobserve").args(args())
+    clap::Command::new("exposedobserve").args(args())
 }
 
 fn handle_args(app: clap::ArgMatches) -> Cli {
@@ -209,7 +210,7 @@ mod tests {
     fn test_command_args_function() {
         // Test that command_args() creates a valid Command
         let command = command_args();
-        assert_eq!(command.get_name(), "openobserve");
+        assert_eq!(command.get_name(), "exposedobserve");
 
         // Check that the command has arguments
         let args = command.get_arguments().collect::<Vec<_>>();
@@ -243,7 +244,7 @@ mod tests {
         let test_cases = [
             // Test with minimal arguments (using defaults)
             (
-                vec!["openobserve", "--data", "/tmp/data"],
+                vec!["exposedobserve", "--data", "/tmp/data"],
                 "stream",
                 "default",
                 "logs",
@@ -253,7 +254,7 @@ mod tests {
             ),
             // Test with custom arguments
             (
-                vec!["openobserve", "--org", "test_org", "--data", "/tmp/data"],
+                vec!["exposedobserve", "--org", "test_org", "--data", "/tmp/data"],
                 "stream",
                 "test_org",
                 "logs",
@@ -263,7 +264,7 @@ mod tests {
             ),
             (
                 vec![
-                    "openobserve",
+                    "exposedobserve",
                     "--stream_type",
                     "metrics",
                     "--data",
@@ -278,7 +279,7 @@ mod tests {
             ),
             (
                 vec![
-                    "openobserve",
+                    "exposedobserve",
                     "--stream_name",
                     "test_stream",
                     "--data",
@@ -292,7 +293,7 @@ mod tests {
                 "day",
             ),
             (
-                vec!["openobserve", "--file_type", "csv", "--data", "/tmp/data"],
+                vec!["exposedobserve", "--file_type", "csv", "--data", "/tmp/data"],
                 "stream",
                 "default",
                 "logs",
@@ -301,7 +302,7 @@ mod tests {
                 "day",
             ),
             (
-                vec!["openobserve", "--date", "hour", "--data", "/tmp/data"],
+                vec!["exposedobserve", "--date", "hour", "--data", "/tmp/data"],
                 "stream",
                 "default",
                 "logs",
@@ -340,7 +341,7 @@ mod tests {
     fn test_time_handling_with_custom_timestamps() {
         // Test time handling with custom start and end times
         let args = vec![
-            "openobserve",
+            "exposedobserve",
             "--data",
             "/tmp/data",
             "--start",
@@ -359,7 +360,7 @@ mod tests {
     #[test]
     fn test_time_handling_with_defaults() {
         // Test time handling when start_time and end_time are not provided
-        let args = vec!["openobserve", "--data", "/tmp/data"];
+        let args = vec!["exposedobserve", "--data", "/tmp/data"];
         let matches = command_args().get_matches_from(args);
         let cli = handle_args(matches);
 
@@ -416,7 +417,7 @@ mod tests {
         let edge_cases = [
             // Empty string values
             vec![
-                "openobserve",
+                "exposedobserve",
                 "--org",
                 "",
                 "--stream_name",
@@ -426,7 +427,7 @@ mod tests {
             ],
             // Very long values
             vec![
-                "openobserve",
+                "exposedobserve",
                 "--org",
                 &long_string_a,
                 "--stream_name",
@@ -436,7 +437,7 @@ mod tests {
             ],
             // Special characters
             vec![
-                "openobserve",
+                "exposedobserve",
                 "--org",
                 "org-with-dashes",
                 "--stream_name",
@@ -446,7 +447,7 @@ mod tests {
             ],
             // Numeric values as strings
             vec![
-                "openobserve",
+                "exposedobserve",
                 "--start",
                 "0",
                 "--end",
@@ -456,7 +457,7 @@ mod tests {
             ],
             // Large timestamp values
             vec![
-                "openobserve",
+                "exposedobserve",
                 "--start",
                 "999999999999999",
                 "--end",

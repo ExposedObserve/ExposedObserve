@@ -1,4 +1,5 @@
 <!-- Copyright 2023 OpenObserve Inc.
+Modifications Copyright 2025 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -23,8 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         loading="lazy"
         :src="
           store?.state?.theme == 'dark'
-            ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-            : getImageURL('images/common/openobserve_latest_light_2.svg')
+            ? getImageURL('images/eo/eo-logo.svg')
+            : getImageURL('images/eo/eo-logo.svg')
         "
       />
     </div>
@@ -44,6 +45,9 @@ import InvitationList from "@/components/iam/users/InvitationList.vue";
 import config from "@/aws-exports";
 import configService from "@/services/config";
 import { useStore } from "vuex";
+import {
+  getUserInfoFromClaims
+} from "@/utils/oidcutils"
 import {
   getUserInfo,
   getDecodedUserInfo,
@@ -282,7 +286,7 @@ export default defineComponent({
         .get_config()
         .then(async (res) => {
           this.store.commit("setZoConfig", res.data);
-          const token = getUserInfo(this.$route.hash);
+          const token = getUserInfoFromClaims(this.$route.hash);
 
           if (token !== null && token.email != null) {
             this.user.email = token.email;
@@ -319,10 +323,10 @@ export default defineComponent({
               userInfo: this.userInfo,
             });
             this.getDefaultOrganization();
-            // this.redirectUser();
           } else {
             this.VerifyAndCreateUser();
           }
+          this.redirectUser();
         })
         .catch((err) => {
           console.error("Error while fetching config:", err);

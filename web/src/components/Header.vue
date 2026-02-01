@@ -1,4 +1,5 @@
 <!-- Copyright 2023 OpenObserve Inc.
+Modifications Copyright 2025 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <template>
   <q-toolbar>
-    <!-- LOGO SECTION: Displays custom or default OpenObserve logo -->
+    <!-- LOGO SECTION: Displays custom or default ExposedObserve logo -->
     <!-- Shows custom logo/text if configured in enterprise mode -->
     <div
       class="flex relative-position q-mr-sm"
@@ -69,35 +70,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
        </div>
 
 
-      <!-- OpenObserve logo (shown alongside custom logo if configured) -->
+      <!-- ExposedObserve logo (shown alongside custom logo if configured) -->
       <div
         v-if="store.state.zoConfig.custom_hide_self_logo == false"
         class="logo-container"
       >
         <img
-          class="openobserve-logo cursor-pointer"
+          class="exposedbserve-logo cursor-pointer"
           :src="getImageURL(
             store.state.theme === 'dark'
-              ? 'images/common/openobserve_latest_dark_2.svg'
-              : 'images/common/openobserve_latest_light_2.svg'
+              ? 'images/eo/eo-logo.svg'
+              : 'images/eo/eo-logo.svg'
           )"
           @click="goToHome"
-          alt="OpenObserve"
+          alt="ExposedObserve"
         />
       </div>
     </div>
 
-    <!-- Default OpenObserve logo (when no custom logo) -->
+    <!-- Default ExposedObserve logo (when no custom logo) -->
     <div v-else class="flex relative-position q-mr-sm logo-container">
       <img
-        class="openobserve-logo cursor-pointer"
+        class="exposedbserve-logo cursor-pointer"
         :src="getImageURL(
           store.state.theme === 'dark'
-            ? 'images/common/openobserve_latest_dark_2.svg'
-            : 'images/common/openobserve_latest_light_2.svg'
+            ? 'images/eo/eo-logo.svg'
+            : 'images/eo/eo-logo.svg'
         )"
         @click="goToHome"
-        alt="OpenObserve"
+        alt="ExposedObserve"
       />
     </div>
 
@@ -301,25 +302,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
       <!-- THEME SWITCHER: Toggle between light and dark mode -->
       <ThemeSwitcher></ThemeSwitcher>
 
-      <!-- SLACK COMMUNITY LINK -->
-      <q-btn
-        round
-        flat
-        dense
-        :ripple="false"
-        @click="openSlack"
-        data-test="menu-link-slack-item"
-      >
-        <div class="row items-center no-wrap">
-          <q-icon
-            ><component :is="slackIcon" size="32px" class="header-icon"
-          /></q-icon>
-        </div>
-        <q-tooltip anchor="top middle" self="bottom middle">
-          {{ t("menu.slack") }}
-        </q-tooltip>
-      </q-btn>
-
       <!-- HELP MENU: Contains links to docs, API, and about page -->
       <q-btn
         round
@@ -362,16 +344,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               </q-item>
               <q-separator />
             </div>
-
-            <!-- Documentation link -->
-            <q-item clickable @click="navigateToDocs()">
-              <q-item-section>
-                <q-item-label>
-                  {{ t(`menu.docs`) }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-separator />
 
             <!-- About page link -->
             <q-item to="/about" data-test="menu-link-about-item">
@@ -590,11 +562,6 @@ export default defineComponent({
       type: Object as PropType<any>,
       required: true,
     },
-    // Slack icon component
-    slackIcon: {
-      type: Object as PropType<any>,
-      required: true,
-    },
     // Backend URL
     zoBackendUrl: {
       type: String,
@@ -653,7 +620,7 @@ export default defineComponent({
     "updateOrganization",
     "goToHome",
     "toggleAIChat",
-    "openSlack",
+    "openSupport",
     "navigateToOpenAPI",
     "navigateToDocs",
     "changeLanguage",
@@ -676,8 +643,8 @@ export default defineComponent({
       emit("toggleAIChat");
     };
 
-    const openSlack = () => {
-      emit("openSlack");
+    const openSupport = () => {
+      emit("openSupport");
     };
 
     const navigateToOpenAPI = (url: string) => {
@@ -722,7 +689,7 @@ export default defineComponent({
       updateOrganization,
       goToHome,
       toggleAIChat,
-      openSlack,
+      openSupport,
       navigateToOpenAPI,
       navigateToDocs,
       changeLanguage,

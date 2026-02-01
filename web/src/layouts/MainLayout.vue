@@ -1,4 +1,5 @@
 <!-- Copyright 2023 OpenObserve Inc.
+Modifications Copyright 2025 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -201,6 +202,7 @@ import { openobserveRum } from "@openobserve/browser-rum";
 import useSearchWebSocket from "@/composables/useSearchWebSocket";
 import O2AIChat from "@/components/O2AIChat.vue";
 import useRoutePrefetch from "@/composables/useRoutePrefetch";
+import oidcAuth from "@/services/oidc_auth";
 
 let mainLayoutMixin: any = null;
 if (config.isCloud == "true") {
@@ -255,6 +257,7 @@ export default defineComponent({
       window.open(zoBackendUrl + "/swagger/index.html", "_blank");
     },
     signout() {
+      oidcAuth.sign_out_user().then((res: any) => {});
       this.closeSocket();
 
       if (config.isEnterprise == "true") {
@@ -1145,6 +1148,20 @@ export default defineComponent({
   align-items: center;
   min-height: 40px;
   min-width: 150px;
+}
+
+// ExposedObserve logo styling
+.exposedbserve-logo {
+  height: auto;
+  max-height: 64px;
+  width: auto;
+  max-width: 150px;
+  display: block;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
 // OpenObserve logo styling

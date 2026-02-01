@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -32,7 +33,7 @@ pub async fn serve(path: web::Path<String>) -> EmbedResponse<EmbedableFileRespon
     if !path.starts_with("src/")
         && !path.starts_with("assets/")
         && !path.starts_with("monacoeditorwork/")
-        && !path.eq("favicon.ico")
+        && !path.eq("eo-logo.svg")
     {
         path = "index.html";
     }

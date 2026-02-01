@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -34,7 +35,7 @@ use crate::{
     description = "Ingests log data using Grafana Loki-compatible API format. Supports both JSON and Protocol Buffers \
                    content types with optional compression (gzip for JSON, snappy for Protobuf). Stream names are \
                    extracted from the 'stream_name' label in stream metadata. Provides seamless migration path from \
-                   Loki deployments to OpenObserve while maintaining API compatibility.",
+                   Loki deployments to ExposedObserve while maintaining API compatibility.",
     security(("Authorization"= [])),
     params(("org_id" = String, Path, description = "Organization name")),
     request_body(content = inline(LokiPushRequest), description = "Loki-compatible log push data in JSON format. Stream names are extracted from 'stream_name' label in the stream labels. Also supports Protobuf format (application/x-protobuf) with optional compression (gzip for JSON, snappy for Protobuf)", content_type = "application/json", example = json!({
@@ -146,7 +147,7 @@ fn parse_json_request(
             let mut decompressed = Vec::new();
             match decoder.read_to_end(&mut decompressed) {
                 Ok(_) => decompressed,
-                Err(_) => body.to_vec(), // Fallback to original data like OpenObserve pattern
+                Err(_) => body.to_vec(), // Fallback to original data like ExposedObserve pattern
             }
         }
         None | Some("identity") => body.to_vec(),

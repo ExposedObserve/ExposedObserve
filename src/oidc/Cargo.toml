@@ -1,0 +1,30 @@
+[package]
+name = "oidc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+openidconnect = {version = "4.0.1", features = ["reqwest-blocking"]}
+serde_json.workspace = true
+dotenvy.workspace = true
+anyhow.workspace = true
+actix-web.workspace = true
+arc-swap.workspace = true
+once_cell.workspace = true
+actix-session = { workspace = true, features = ["redis-session"] }
+serde.workspace = true
+tokio.workspace = true
+log.workspace = true
+base64.workspace = true
+env_logger.workspace = true
+regex.workspace = true
+
+futures.workspace = true
+redis = "1.0.1"
+deadpool-redis = "0.22.0"
+[dev-dependencies]
+wiremock = "0.6.5"
+rsa = "0.9.9"
+rand ="0.8.0"
+jsonwebtoken = {version = "10.2.0", features = ["rust_crypto"]}
+reqwest = { version = "0.12.24", features = ["cookies", "json"] }

@@ -1,4 +1,5 @@
 // Copyright 2023 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -134,6 +135,7 @@ describe("Login", () => {
     // Create mock store
     store = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: true,
           native_login_enabled: true,
@@ -155,8 +157,9 @@ describe("Login", () => {
         SET_CURRENT_USER: vi.fn(),
         SET_SELECTED_ORGANIZATION: vi.fn(),
       },
-      dispatch: vi.fn(),
     });
+    // Override dispatch method
+    store.dispatch = vi.fn();
 
     // Create mock router
     router = createRouter({
@@ -246,6 +249,7 @@ describe("Login", () => {
   it("should return false for showSSO when SSO is disabled", () => {
     const storeWithoutSSO = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: false,
           native_login_enabled: true,
@@ -259,8 +263,8 @@ describe("Login", () => {
         setCurrentUser: vi.fn(),
         setSelectedOrganization: vi.fn(),
       },
-      dispatch: vi.fn(),
     });
+    storeWithoutSSO.dispatch = vi.fn();
 
     wrapper = mount(Login, {
       global: {
@@ -284,6 +288,7 @@ describe("Login", () => {
   it("should return false for showInternalLogin when native login is disabled", () => {
     const storeWithoutNativeLogin = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: true,
           native_login_enabled: false,
@@ -297,8 +302,8 @@ describe("Login", () => {
         setCurrentUser: vi.fn(),
         setSelectedOrganization: vi.fn(),
       },
-      dispatch: vi.fn(),
     });
+    storeWithoutNativeLogin.dispatch = vi.fn();
 
     wrapper = mount(Login, {
       global: {
@@ -360,9 +365,8 @@ describe("Login", () => {
     await onSignInPromise;
   });
 
-  // Test 12: loginWithSSo calls authService.get_dex_login
-  it("should call authService.get_dex_login when loginWithSSo is called", async () => {
-    const authService = await import("@/services/auth");
+  // Test 12: loginWithSSo redirects to internal auth endpoint
+  it("should redirect to internal auth endpoint when loginWithSSo is called", async () => {
     wrapper = mount(Login, {
       global: {
         plugins: [i18n, store, router],
@@ -370,11 +374,22 @@ describe("Login", () => {
     });
 
     await wrapper.vm.loginWithSSo();
-    expect(authService.default.get_dex_login).toHaveBeenCalled();
+    expect(window.location.href).toBe("http://localhost:8081/auth/login");
   });
 
-  // Test 13: loginWithSSo redirects to SSO URL
-  it("should redirect to SSO URL when get_dex_login returns a URL", async () => {
+  // Test 13: loginWithSSo redirects with return_to parameter when redirectURI exists
+  it("should redirect with return_to parameter when redirectURI exists in sessionStorage", async () => {
+    const mockGetItem = vi.fn().mockReturnValue("/dashboard");
+
+    Object.defineProperty(window, "sessionStorage", {
+      value: {
+        getItem: mockGetItem,
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+      writable: true,
+    });
+
     wrapper = mount(Login, {
       global: {
         plugins: [i18n, store, router],
@@ -382,7 +397,7 @@ describe("Login", () => {
     });
 
     await wrapper.vm.loginWithSSo();
-    expect(window.location.href).toBe("https://sso.example.com");
+    expect(window.location.href).toBe("http://localhost:8081/auth/login?return_to=/dashboard");
   });
 
   // Test 14: loginWithSSo handles errors gracefully
@@ -489,6 +504,7 @@ describe("Login", () => {
     const mockDispatch = vi.fn();
     const testStore = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: true,
           native_login_enabled: true,
@@ -524,6 +540,7 @@ describe("Login", () => {
     const mockDispatch = vi.fn();
     const testStore = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: true,
           native_login_enabled: true,
@@ -578,8 +595,8 @@ describe("Login", () => {
         setCurrentUser: vi.fn(),
         setSelectedOrganization: vi.fn(),
       },
-      dispatch: vi.fn(),
     });
+    rumStore.dispatch = vi.fn();
 
     wrapper = mount(Login, {
       global: {
@@ -844,6 +861,7 @@ describe("Login", () => {
     const mockDispatch = vi.fn();
     const testStore = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: true,
           native_login_enabled: true,
@@ -934,7 +952,8 @@ describe("Login", () => {
       },
     });
 
-    await expect(wrapper.vm.loginWithSSo()).resolves.toBeUndefined();
+    const result = await wrapper.vm.loginWithSSo();
+    expect(result).toBeUndefined();
   });
 
   it("should have selected method that accepts parameters", () => {
@@ -992,10 +1011,18 @@ describe("Login", () => {
     expect(mockResetValidation).toHaveBeenCalled();
   });
 
-  // Test 42: loginWithSSo handles null response
-  it("should handle null response from get_dex_login", async () => {
-    const authService = await import("@/services/auth");
-    (authService.default.get_dex_login as any).mockResolvedValueOnce(null);
+  // Test 42: loginWithSSo handles when no redirectURI is stored
+  it("should redirect without return_to parameter when no redirectURI exists", async () => {
+    const mockGetItem = vi.fn().mockReturnValue(null);
+
+    Object.defineProperty(window, "sessionStorage", {
+      value: {
+        getItem: mockGetItem,
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+      writable: true,
+    });
 
     wrapper = mount(Login, {
       global: {
@@ -1004,7 +1031,7 @@ describe("Login", () => {
     });
 
     await wrapper.vm.loginWithSSo();
-    expect(window.location.href).toBe(""); // Should not change
+    expect(window.location.href).toBe("http://localhost:8081/auth/login");
   });
 
   // Test 43: onSignIn with different role
@@ -1017,6 +1044,7 @@ describe("Login", () => {
     const mockDispatch = vi.fn();
     const testStore = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: true,
           native_login_enabled: true,
@@ -1135,6 +1163,7 @@ describe("Login", () => {
   it("should update computed properties when store state changes", async () => {
     const reactiveStore = createStore({
       state: {
+        API_ENDPOINT: "http://localhost:8081",
         zoConfig: {
           sso_enabled: false,
           native_login_enabled: false,

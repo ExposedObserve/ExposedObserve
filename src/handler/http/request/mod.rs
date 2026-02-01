@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -54,6 +55,7 @@ pub mod status;
 pub mod stream;
 pub mod traces;
 pub mod users;
+pub mod ext_auth;
 
 pub const CONTENT_TYPE_JSON: &str = "application/json";
 pub const CONTENT_TYPE_PROTO: &str = "application/x-protobuf";

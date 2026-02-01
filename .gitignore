@@ -1,3 +1,5 @@
+# VSCode settings
+.vscode/
 # Commonly files
 .DS_Store
 .history
@@ -16,6 +18,7 @@ flamegraph.html
 /tmp/
 /data*/
 /src/infra/data/
+/src/data/
 /.idea/
 /.vscode
 /.env

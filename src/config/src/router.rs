@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -43,10 +44,11 @@ const QUERIER_ROUTES: [(&str, usize); 24] = [
                                                * {label_name}/
                                                * values */
 ];
-const QUERIER_ROUTES_BY_BODY: [&str; 6] = [
+const QUERIER_ROUTES_BY_BODY: [&str; 7] = [
     "/_search",
     "/_search_partition",
     "/_search_stream",
+    "/_multi_search_stream",
     "/_values_stream",
     "/prometheus/api/v1/query_range",
     "/prometheus/api/v1/query_exemplars",
@@ -143,6 +145,7 @@ mod tests {
     fn test_is_querier_route_by_body() {
         assert!(is_querier_route_by_body("/_search"));
         assert!(is_querier_route_by_body("/_search_stream"));
+        assert!(is_querier_route_by_body("/_multi_search_stream"));
         assert!(is_querier_route_by_body("/_values_stream"));
         assert!(is_querier_route_by_body("/prometheus/api/v1/query_range"));
         assert!(is_querier_route_by_body(

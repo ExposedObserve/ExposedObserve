@@ -198,7 +198,7 @@
     "location": "地点"
   },
   "about": {
-    "name": "OpenObserve",
+    "name": "ExposedObserve",
     "introduction": "让应用观测更简单",
     "version": "版本",
     "commitHash": "提交ID",

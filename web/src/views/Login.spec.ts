@@ -1,4 +1,5 @@
 // Copyright 2023 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -58,6 +59,10 @@ vi.mock("@/utils/zincutils", () => ({
   getImageURL: vi.fn(),
 }));
 
+vi.mock("@/utils/oidcutils", () => ({
+  getUserInfoFromClaims: vi.fn(),
+}));
+
 vi.mock("@/components/login/Login.vue", () => ({
   default: {
     name: "Login",
@@ -70,6 +75,7 @@ import configService from "@/services/config";
 import usersService from "@/services/users";
 import organizationsService from "@/services/organizations";
 import * as zincutils from "@/utils/zincutils";
+import * as oidcutils from "@/utils/oidcutils";
 import config from "@/aws-exports";
 
 // Mock Quasar notification
@@ -205,6 +211,13 @@ describe("Login.vue", () => {
     });
 
     (zincutils.getUserInfo as any).mockReturnValue({
+      email: "test@example.com",
+      sub: "test-sub",
+      given_name: "Test",
+      family_name: "User",
+    });
+
+    (oidcutils.getUserInfoFromClaims as any).mockReturnValue({
       email: "test@example.com",
       sub: "test-sub",
       given_name: "Test",
@@ -705,7 +718,9 @@ describe("Login.vue", () => {
 
   describe("Created Lifecycle Hook", () => {
     it("should process route hash and extract user info", async () => {
-      router.currentRoute.value.hash = "#access_token=test&id_token=test";
+      const userInfo = { email: "test@example.com", sub: "test-sub", given_name: "Test", family_name: "User" };
+      const encodedUserInfo = btoa(JSON.stringify(userInfo));
+      router.currentRoute.value.hash = `#userInfo=${encodedUserInfo}`;
 
       wrapper = mount(LoginPage, {
         global: {
@@ -713,7 +728,7 @@ describe("Login.vue", () => {
           mocks: {
             $q: mockQuasar,
             $route: {
-              hash: "#access_token=test&id_token=test",
+              hash: `#userInfo=${encodedUserInfo}`,
             },
           },
         },
@@ -722,17 +737,14 @@ describe("Login.vue", () => {
       await nextTick();
 
       expect(configService.get_config).toHaveBeenCalled();
-      expect(zincutils.getUserInfo).toHaveBeenCalled();
+      expect(oidcutils.getUserInfoFromClaims).toHaveBeenCalledWith(`#userInfo=${encodedUserInfo}`);
     });
 
     it("should set user info from token when available", async () => {
-      router.currentRoute.value.hash = "#access_token=test";
-      zincutils.getUserInfo.mockReturnValue({
-        email: "token@example.com",
-        sub: "token-sub",
-        given_name: "Token",
-        family_name: "User",
-      });
+      const userInfo = { email: "token@example.com", sub: "token-sub", given_name: "Token", family_name: "User" };
+      const encodedUserInfo = btoa(JSON.stringify(userInfo));
+      router.currentRoute.value.hash = `#userInfo=${encodedUserInfo}`;
+      oidcutils.getUserInfoFromClaims.mockReturnValue(userInfo);
 
       wrapper = mount(LoginPage, {
         global: {
@@ -740,7 +752,7 @@ describe("Login.vue", () => {
           mocks: {
             $q: mockQuasar,
             $route: {
-              hash: "#access_token=test",
+              hash: `#userInfo=${encodedUserInfo}`,
             },
           },
         },
@@ -755,11 +767,10 @@ describe("Login.vue", () => {
     });
 
     it("should handle missing given_name and family_name in token", async () => {
-      router.currentRoute.value.hash = "#access_token=test";
-      zincutils.getUserInfo.mockReturnValue({
-        email: "token@example.com",
-        sub: "token-sub",
-      });
+      const userInfo = { email: "token@example.com", sub: "token-sub" };
+      const encodedUserInfo = btoa(JSON.stringify(userInfo));
+      router.currentRoute.value.hash = `#userInfo=${encodedUserInfo}`;
+      oidcutils.getUserInfoFromClaims.mockReturnValue(userInfo);
 
       wrapper = mount(LoginPage, {
         global: {
@@ -767,7 +778,7 @@ describe("Login.vue", () => {
           mocks: {
             $q: mockQuasar,
             $route: {
-              hash: "#access_token=test",
+              hash: `#userInfo=${encodedUserInfo}`,
             },
           },
         },
@@ -1069,8 +1080,8 @@ describe("Login.vue", () => {
     });
 
     it("should handle null user info from token", async () => {
-      zincutils.getUserInfo.mockReturnValue(null);
-      router.currentRoute.value.hash = "#access_token=test";
+      oidcutils.getUserInfoFromClaims.mockReturnValue(null);
+      router.currentRoute.value.hash = "#userInfo=invalid";
 
       const createdWrapper = mount(LoginPage, {
         global: {
@@ -1078,7 +1089,7 @@ describe("Login.vue", () => {
           mocks: {
             $q: mockQuasar,
             $route: {
-              hash: "#access_token=test",
+              hash: "#userInfo=invalid",
             },
           },
         },
@@ -1090,8 +1101,10 @@ describe("Login.vue", () => {
     });
 
     it("should handle token with null email", async () => {
-      zincutils.getUserInfo.mockReturnValue({ email: null });
-      router.currentRoute.value.hash = "#access_token=test";
+      const userInfo = { email: null, sub: "test-sub" };
+      const encodedUserInfo = btoa(JSON.stringify(userInfo));
+      oidcutils.getUserInfoFromClaims.mockReturnValue(userInfo);
+      router.currentRoute.value.hash = `#userInfo=${encodedUserInfo}`;
 
       const createdWrapper = mount(LoginPage, {
         global: {
@@ -1099,7 +1112,7 @@ describe("Login.vue", () => {
           mocks: {
             $q: mockQuasar,
             $route: {
-              hash: "#access_token=test",
+              hash: `#userInfo=${encodedUserInfo}`,
             },
           },
         },
@@ -1192,13 +1205,10 @@ describe("Login.vue", () => {
   describe("Integration Tests", () => {
     it("should handle complete new user flow", async () => {
       // Setup for new user
-      router.currentRoute.value.hash = "#access_token=test";
-      zincutils.getUserInfo.mockReturnValue({
-        email: "newuser@example.com",
-        sub: "new-sub",
-        given_name: "New",
-        family_name: "User",
-      });
+      const userInfo = { email: "newuser@example.com", sub: "new-sub", given_name: "New", family_name: "User" };
+      const encodedUserInfo = btoa(JSON.stringify(userInfo));
+      router.currentRoute.value.hash = `#userInfo=${encodedUserInfo}`;
+      oidcutils.getUserInfoFromClaims.mockReturnValue(userInfo);
       zincutils.getDecodedUserInfo.mockReturnValue(
         JSON.stringify({
           email: "newuser@example.com",
@@ -1214,7 +1224,7 @@ describe("Login.vue", () => {
           mocks: {
             $q: mockQuasar,
             $route: {
-              hash: "#access_token=test",
+              hash: `#userInfo=${encodedUserInfo}`,
             },
           },
         },

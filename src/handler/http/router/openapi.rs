@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -353,7 +354,7 @@ use crate::{common::meta, handler::http::request};
     ),
     modifiers(&SecurityAddon),
     tags(
-        (name = "Meta", description = "Meta details about the OpenObserve state itself. e.g. healthz"),
+        (name = "Meta", description = "Meta details about the ExposedObserve state itself. e.g. healthz"),
         (name = "Auth", description = "User login authentication"),
         (name = "Logs", description = "Logs data ingestion operations"),
         (name = "Dashboards", description = "Dashboard operations"),
@@ -373,8 +374,8 @@ use crate::{common::meta, handler::http::request};
         (name = "Patterns", description = "Log pattern extraction operations (enterprise)"),
     ),
     info(
-        description = "OpenObserve API documents [https://openobserve.ai/docs/](https://openobserve.ai/docs/)",
-        contact(name = "OpenObserve", email = "hello@zinclabs.io", url = "https://openobserve.ai/"),
+        description = "ExposedObserve API documents)",
+        contact(name = "ExposedObserve", email = "mike.sauh@gmail.com", url = "https://github.com/ExposedObserve/ExposedObserve"),
     ),
 )]
 pub struct ApiDoc;

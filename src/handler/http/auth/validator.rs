@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -780,7 +781,7 @@ fn create_unauthorized_response(message: &str) -> Error {
     let www_authenticate = if !auth_server_uri.is_empty() {
         format!(r#"Bearer as_uri="{auth_server_uri}""#)
     } else {
-        r#"Bearer realm="openobserve""#.to_string()
+        r#"Bearer realm="exposedobserve""#.to_string()
     };
 
     actix_web::error::InternalError::from_response(

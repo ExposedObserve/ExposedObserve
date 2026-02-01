@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2025 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -762,7 +763,7 @@ async fn accept_org_invite(
 
 /// GetNodeList
 ///
-/// This endpoint returns a hierarchical list of all nodes in the OpenObserve cluster organized by
+/// This endpoint returns a hierarchical list of all nodes in the ExposedObserve cluster organized by
 /// regions and clusters, along with node details including versions and other essential
 /// information. It can be useful for:
 ///
@@ -778,7 +779,7 @@ async fn accept_org_invite(
     tag = "Organizations",
     operation_id = "GetMetaOrganizationNodeList",
     summary = "Get cluster node list",
-    description = "Retrieves a hierarchical list of all nodes in the OpenObserve cluster organized by regions and clusters, with detailed information about each node including versions and roles. Useful for monitoring cluster health and managing distributed deployments.",
+    description = "Retrieves a hierarchical list of all nodes in the ExposedObserve cluster organized by regions and clusters, with detailed information about each node including versions and roles. Useful for monitoring cluster health and managing distributed deployments.",
     security(
         ("Authorization"= [])
     ),
@@ -850,7 +851,7 @@ pub async fn node_list_impl(
 
 /// GetClusterInfo
 ///
-/// This endpoint returns detailed information about the OpenObserve cluster, organized by
+/// This endpoint returns detailed information about the ExposedObserve cluster, organized by
 /// regions and clusters. It provides comprehensive visibility into cluster status and can be used
 /// for:
 ///
@@ -867,7 +868,7 @@ pub async fn node_list_impl(
     tag = "Organizations",
     operation_id = "GetMetaOrganizationClusterInfo",
     summary = "Get cluster information",
-    description = "Retrieves comprehensive information about the OpenObserve cluster organized by regions and clusters, including workload information, pending jobs, and resource utilization metrics. Essential for monitoring cluster performance and identifying bottlenecks.",
+    description = "Retrieves comprehensive information about the ExposedObserve cluster organized by regions and clusters, including workload information, pending jobs, and resource utilization metrics. Essential for monitoring cluster performance and identifying bottlenecks.",
     security(
         ("Authorization"= [])
     ),
@@ -1006,7 +1007,7 @@ async fn get_local_cluster_info() -> Result<ClusterInfoResponse, anyhow::Error> 
     let cluster_info_obj = ClusterInfo {
         pending_jobs: total_pending_jobs,
     };
-    response.add_cluster_info(cluster_info_obj, local_cluster, "openobserve".to_string());
+    response.add_cluster_info(cluster_info_obj, local_cluster, "ExposedObserve".to_string());
 
     Ok(response)
 }
