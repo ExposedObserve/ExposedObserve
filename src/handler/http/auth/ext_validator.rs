@@ -31,6 +31,7 @@
 /// 
 use actix_http::{Payload, header};
 use actix_web::{Error, FromRequest, dev::ServiceRequest, error::{ErrorForbidden, ErrorUnauthorized}, http::Method};
+use config::router::is_querier_route_by_body;
 use log::{error, info};
 use oidc::models::UserInfo;
 
@@ -112,7 +113,8 @@ pub async fn proxy_validator(
 
 /// Validates requests for external OIDC users.
 ///
-/// Checks if the request method is allowed: GET for all users, or any method for admin users.
+/// Checks if the request method is allowed: GET for all users, POST for querier routes (read operations),
+/// or any method for admin users.
 /// Extracts the organization ID from the path and verifies if the user has access
 /// to that organization using the organization data from the OIDC token.
 /// If access is granted, adds the user email to the request headers.
@@ -127,7 +129,13 @@ pub async fn oidc_validator(
     // Check if user has admin role - allows all HTTP methods
     let is_admin = user_info.org_roles.values().any(|role| role == "admin");
 
-    if req.request().method() != Method::GET && !is_admin {
+    // Allow GET for all users, POST for querier routes (read operations), or any method for admin users
+    let method = req.request().method();
+    let is_allowed_method = method == Method::GET
+        || is_admin
+        || (method == Method::POST && is_querier_route_by_body(req.path()));
+
+    if !is_allowed_method {
         return forbidden_response(req);
     }
 
@@ -418,7 +426,7 @@ mod tests {
             is_internal: false,
         };
 
-        // Create test request with POST method
+        // Create test request with POST method to non-querier route
         let req = TestRequest::post()
             .uri("/proxy/default/https://example.com")
             .to_srv_request();
@@ -426,7 +434,7 @@ mod tests {
         // Test oidc_validator with regular user
         let result = oidc_validator(req, &user_info).await;
 
-        // Should fail for POST requests from non-admin users
+        // Should fail for POST requests to non-querier routes from non-admin users
         assert!(result.is_err());
     }
 
@@ -682,7 +690,7 @@ mod tests {
             is_internal: false,
         };
 
-        // Create test request with POST method
+        // Create test request with POST method to non-querier route
         let req = TestRequest::post()
             .uri("/proxy/default/https://example.com")
             .to_srv_request();
@@ -690,7 +698,7 @@ mod tests {
         // Test oidc_validator with viewer user
         let result = oidc_validator(req, &user_info).await;
 
-        // Should fail for POST requests from viewer users
+        // Should fail for POST requests to non-querier routes from viewer users
         assert!(result.is_err());
     }
 
@@ -825,5 +833,135 @@ mod tests {
         assert!(result.is_err());
         // Note: The exact error type check would require inspecting the error,
         // but the important thing is that it fails gracefully
+    }
+
+    #[tokio::test]
+    async fn test_oidc_validator_regular_user_search_stream_allowed() {
+        // Create mock regular user info
+        let mut org_roles = std::collections::HashMap::new();
+        org_roles.insert("default".to_string(), "member".to_string());
+
+        let user_info = UserInfo {
+            sub: "regular_user".to_string(),
+            email: "user@example.com".to_string(),
+            orgs: std::collections::HashSet::from(["default".to_string()]),
+            org_roles,
+            is_internal: false,
+        };
+
+        // Create test request with POST method to _search_stream (querier route)
+        let req = TestRequest::post()
+            .uri("/api/default/_search_stream")
+            .to_srv_request();
+
+        // Test oidc_validator with regular user
+        let result = oidc_validator(req, &user_info).await;
+
+        // Should succeed for POST requests to querier routes from regular users
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_validator_regular_user_multi_search_stream_allowed() {
+        // Create mock regular user info
+        let mut org_roles = std::collections::HashMap::new();
+        org_roles.insert("default".to_string(), "member".to_string());
+
+        let user_info = UserInfo {
+            sub: "regular_user".to_string(),
+            email: "user@example.com".to_string(),
+            orgs: std::collections::HashSet::from(["default".to_string()]),
+            org_roles,
+            is_internal: false,
+        };
+
+        // Create test request with POST method to _multi_search_stream (querier route)
+        let req = TestRequest::post()
+            .uri("/api/default/_multi_search_stream")
+            .to_srv_request();
+
+        // Test oidc_validator with regular user
+        let result = oidc_validator(req, &user_info).await;
+
+        // Should succeed for POST requests to querier routes from regular users
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_validator_regular_user_values_stream_allowed() {
+        // Create mock regular user info
+        let mut org_roles = std::collections::HashMap::new();
+        org_roles.insert("default".to_string(), "member".to_string());
+
+        let user_info = UserInfo {
+            sub: "regular_user".to_string(),
+            email: "user@example.com".to_string(),
+            orgs: std::collections::HashSet::from(["default".to_string()]),
+            org_roles,
+            is_internal: false,
+        };
+
+        // Create test request with POST method to _values_stream (querier route)
+        let req = TestRequest::post()
+            .uri("/api/default/stream/logs/_values_stream")
+            .to_srv_request();
+
+        // Test oidc_validator with regular user
+        let result = oidc_validator(req, &user_info).await;
+
+        // Should succeed for POST requests to querier routes from regular users
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_validator_regular_user_prometheus_query_allowed() {
+        // Create mock regular user info
+        let mut org_roles = std::collections::HashMap::new();
+        org_roles.insert("default".to_string(), "member".to_string());
+
+        let user_info = UserInfo {
+            sub: "regular_user".to_string(),
+            email: "user@example.com".to_string(),
+            orgs: std::collections::HashSet::from(["default".to_string()]),
+            org_roles,
+            is_internal: false,
+        };
+
+        // Create test request with POST method to prometheus query_range (querier route)
+        let req = TestRequest::post()
+            .uri("/api/default/prometheus/api/v1/query_range")
+            .to_srv_request();
+
+        // Test oidc_validator with regular user
+        let result = oidc_validator(req, &user_info).await;
+
+        // Should succeed for POST requests to querier routes from regular users
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_validator_regular_user_search_allowed() {
+        // Create mock regular user info
+        let mut org_roles = std::collections::HashMap::new();
+        org_roles.insert("default".to_string(), "member".to_string());
+
+        let user_info = UserInfo {
+            sub: "regular_user".to_string(),
+            email: "user@example.com".to_string(),
+            orgs: std::collections::HashSet::from(["default".to_string()]),
+            org_roles,
+            is_internal: false,
+        };
+
+        // Create test request with POST method to _search (querier route)
+        let req = TestRequest::post()
+            .uri("/api/default/_search")
+            .to_srv_request();
+
+        // Test oidc_validator with regular user
+        let result = oidc_validator(req, &user_info).await;
+
+        // Should succeed for POST requests to querier routes from regular users
+        assert!(result.is_ok());
     }
 }

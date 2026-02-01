@@ -1,4 +1,5 @@
 // Copyright 2023 OpenObserve Inc.
+// Modifications Copyright 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -81,6 +82,52 @@ console.warn = (...args) => {
 // Mock URL.createObjectURL and URL.revokeObjectURL for file download tests
 global.URL.createObjectURL = vi.fn().mockReturnValue('mock-object-url');
 global.URL.revokeObjectURL = vi.fn();
+
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value.toString();
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
+    key: vi.fn((index: number) => Object.keys(store)[index] || null),
+    get length() {
+      return Object.keys(store).length;
+    }
+  };
+})();
+
+// Define it on both global and window to ensure consistency across different test setups
+vi.stubGlobal("localStorage", localStorageMock);
+
+// Ensure Storage.prototype methods are also mocked/spied correctly if needed
+// Some tests might use vi.spyOn(Storage.prototype, 'setItem')
+if (typeof Storage !== 'undefined') {
+  Storage.prototype.getItem = localStorageMock.getItem;
+  Storage.prototype.setItem = localStorageMock.setItem;
+  Storage.prototype.removeItem = localStorageMock.removeItem;
+  Storage.prototype.clear = localStorageMock.clear;
+  Storage.prototype.key = localStorageMock.key;
+
+  // Link the global localStorage to use these prototype methods so spies work
+  // In JSDOM, window.localStorage's prototype is Storage.prototype
+  Object.setPrototypeOf(localStorageMock, Storage.prototype);
+}
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  configurable: true,
+  enumerable: true,
+  writable: true
+});
+
 // Mock clipboard API for test environment
 const mockClipboard = {
   writeText: vi.fn().mockResolvedValue(undefined),

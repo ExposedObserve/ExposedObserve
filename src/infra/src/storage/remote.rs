@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -399,7 +400,7 @@ pub async fn test_config() -> Result<(), anyhow::Error> {
     };
 
     // Test upload
-    let data = Bytes::from("Hello, OpenObserve!");
+    let data = Bytes::from("Hello, ExposedObserve!");
     if let Err(e) = super::put("", TEST_FILE, data).await {
         return Err(anyhow::anyhow!("S3 upload test failed: {e}"));
     }
