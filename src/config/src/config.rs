@@ -1,4 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
+// Modifications Copyright 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -792,7 +793,7 @@ pub struct Common {
     pub web_url: String,
     #[env_config(name = "ZO_BASE_URI", default = "")] // /abc
     pub base_uri: String,
-    #[env_config(name = "ZO_DATA_DIR", default = "./data/openobserve/")]
+    #[env_config(name = "ZO_DATA_DIR", default = "./data/exposedbserve/")]
     pub data_dir: String,
     #[env_config(name = "ZO_DATA_WAL_DIR", default = "")] // ./data/openobserve/wal/
     pub data_wal_dir: String,

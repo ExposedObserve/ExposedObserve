@@ -1,4 +1,5 @@
 // Copyright 2023 OpenObserve Inc.
+// Modifications Copyright 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -458,12 +459,11 @@ describe("DetailTable Component", () => {
   });
 
   it("should update localStorage when toggleWrapLogDetails called", () => {
-    const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
     wrapper.vm.shouldWrapValues = false;
     wrapper.vm.toggleWrapLogDetails();
     
-    expect(setItemSpy).toHaveBeenCalledWith("wrap-log-details", "false");
-  });
+    expect(localStorage.setItem).toHaveBeenCalledWith("wrap-log-details", "false");
+});
 
   it("should read wrap setting from localStorage on mount", async () => {
     window.localStorage.setItem("wrap-log-details", "false");
