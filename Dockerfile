@@ -46,6 +46,7 @@ COPY --from=webbuilder /web/dist web/dist
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git/db \
     --mount=type=cache,id=rustup,target=/usr/local/rustup \
+    --mount=type=cache,id=target,target=/exposedobserve/target \
     cargo build --release --features mimalloc --jobs "$CARGO_JOBS" && \
     mkdir -p /out && \
     cp target/release/exposedobserve /out/exposedobserve
