@@ -1,5 +1,5 @@
 // Copyright 2025 OpenObserve Inc.
-// Modifications Copyright 2025 Mike Sauh
+// Modifications Copyright 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -4373,7 +4373,7 @@ mod tests {
     // ========================================================================
 
     async fn test_backfill_job_list_and_delete() {
-        use openobserve::service::alerts::backfill::{delete_backfill_job, list_backfill_jobs};
+        use exposedobserve::service::alerts::backfill::{delete_backfill_job, list_backfill_jobs};
 
         // Test listing backfill jobs
         let org_id = "e2e";
@@ -4397,7 +4397,7 @@ mod tests {
     }
 
     async fn test_backfill_job_get_nonexistent() {
-        use openobserve::service::alerts::backfill::get_backfill_job;
+        use exposedobserve::service::alerts::backfill::get_backfill_job;
 
         // Test getting a non-existent job
         let org_id = "e2e";
@@ -4407,7 +4407,7 @@ mod tests {
     }
 
     async fn test_backfill_job_delete_by_pipeline() {
-        use openobserve::service::alerts::backfill::delete_backfill_jobs_by_pipeline;
+        use exposedobserve::service::alerts::backfill::delete_backfill_jobs_by_pipeline;
 
         // Test deleting jobs by pipeline
         let org_id = "e2e";
@@ -4422,7 +4422,7 @@ mod tests {
     }
 
     async fn test_backfill_job_enable_disable() {
-        use openobserve::service::alerts::backfill::{enable_backfill_job, list_backfill_jobs};
+        use exposedobserve::service::alerts::backfill::{enable_backfill_job, list_backfill_jobs};
 
         // Test enable/disable on existing jobs
         let org_id = "e2e";

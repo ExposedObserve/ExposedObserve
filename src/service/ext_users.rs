@@ -205,7 +205,8 @@ async fn check_and_create_user_orgs(user_info: &UserInfo) -> Result<Vec<UserOrg>
             None => UserRole::User,
         };
         let user_org = UserOrg {
-            name: org.name,
+            name: org.identifier,
+            org_name: org.name,
             token: String::new(),
             rum_token: None,
             role,
@@ -285,6 +286,7 @@ mod tests {
                 org_id: "dummy".to_string(),
                 email: "admin@zo.dev".to_string(),
                 created_at: 0,
+                allow_static_token: true,
             },
         );
 
@@ -372,6 +374,7 @@ mod tests {
             salt: "".to_string(),
             organizations: vec![UserOrg {
                 name: old_org.to_string(),
+                org_name: old_org.to_string(),
                 token: String::new(),
                 rum_token: None,
                 role: UserRole::User,
