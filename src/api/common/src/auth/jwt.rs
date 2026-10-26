@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -1089,7 +1090,7 @@ pub async fn check_and_add_to_org(
         let mut telemetry_instance = telemetry::Telemetry::new();
         telemetry_instance
             .send_track_event(
-                "OpenObserve - New user registered",
+                "ExposedObserve - New user registered",
                 Some(segment_event_data.clone()),
                 false,
                 false,
@@ -1098,7 +1099,7 @@ pub async fn check_and_add_to_org(
 
         telemetry_instance
             .send_keyevent_track_event(
-                "OpenObserve - New user registered",
+                "ExposedObserve - New user registered",
                 Some(segment_event_data),
                 false,
                 false,

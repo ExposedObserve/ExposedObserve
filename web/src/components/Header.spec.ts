@@ -1,4 +1,5 @@
 ﻿// Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -141,6 +142,9 @@ describe("Header Component", () => {
     mockConfig = {
       isEnterprise: "false",
       isCloud: "false",
+      appName: "ExposedObserve",
+      logoLight: "images/common/eo_logo_light.svg",
+      logoDark: "images/common/eo_logo_dark.svg",
     };
 
     mockUser = {
@@ -194,8 +198,8 @@ describe("Header Component", () => {
       await logoWrapper.vm.$nextTick();
 
       // Verify the OpenObserve logo is rendered
-      const openobserveLogo = logoWrapper.find('[data-test="header-openobserve-logo"]');
-      expect(openobserveLogo.exists()).toBe(true);
+      const appLogo = logoWrapper.find('[data-test="header-app-logo"]');
+      expect(appLogo.exists()).toBe(true);
 
       logoWrapper.unmount();
     });
@@ -249,11 +253,11 @@ describe("Header Component", () => {
       await darkWrapper.vm.$nextTick();
 
       // Verify the logo exists and check that dark theme is applied
-      const openobserveLogo = darkWrapper.find('[data-test="header-openobserve-logo"]');
-      expect(openobserveLogo.exists()).toBe(true);
+      const appLogo = darkWrapper.find('[data-test="header-app-logo"]');
+      expect(appLogo.exists()).toBe(true);
 
       // The logo src should contain 'dark' in the path
-      const logoSrc = openobserveLogo.attributes("src");
+      const logoSrc = appLogo.attributes("src");
       expect(logoSrc).toContain("dark");
 
       darkWrapper.unmount();
@@ -279,8 +283,8 @@ describe("Header Component", () => {
       await customWrapper.vm.$nextTick();
 
       // Check that the OpenObserve logo is NOT in the HTML
-      const openobserveLogo = customWrapper.find('[data-test="header-openobserve-logo"]');
-      expect(openobserveLogo.exists()).toBe(false);
+      const appLogo = customWrapper.find('[data-test="header-app-logo"]');
+      expect(appLogo.exists()).toBe(false);
 
       // Verify the custom logo text IS displayed
       const html = customWrapper.html();
@@ -309,8 +313,8 @@ describe("Header Component", () => {
       await customWrapper.vm.$nextTick();
 
       // Check that the OpenObserve logo IS in the HTML
-      const openobserveLogo = customWrapper.find('[data-test="header-openobserve-logo"]');
-      expect(openobserveLogo.exists()).toBe(true);
+      const appLogo = customWrapper.find('[data-test="header-app-logo"]');
+      expect(appLogo.exists()).toBe(true);
 
       // Verify the custom logo text is also displayed
       const html = customWrapper.html();
@@ -1012,7 +1016,7 @@ describe("Header Component", () => {
       await lightWrapper.vm.$nextTick();
 
       // Verify light theme logo is used
-      const logo = lightWrapper.find('[data-test="header-openobserve-logo"]');
+      const logo = lightWrapper.find('[data-test="header-app-logo"]');
       expect(logo.exists()).toBe(true);
 
       const logoSrc = logo.attributes("src");
@@ -1035,7 +1039,7 @@ describe("Header Component", () => {
       await darkWrapper.vm.$nextTick();
 
       // Verify dark theme logo is used
-      const logo = darkWrapper.find('[data-test="header-openobserve-logo"]');
+      const logo = darkWrapper.find('[data-test="header-app-logo"]');
       expect(logo.exists()).toBe(true);
 
       const logoSrc = logo.attributes("src");
@@ -1136,11 +1140,11 @@ describe("Header Component", () => {
       // Verify no custom logo images are rendered
       expect(html).not.toContain("data:image; base64,");
 
-      // Verify default OpenObserve logo is rendered instead
-      expect(html).toContain("openobserve-logo");
-      const imgs = wrapper.findAll('[data-test="header-openobserve-logo"]');
+      // Verify the default app logo is rendered instead
+      expect(html).toContain("app-logo");
+      const imgs = wrapper.findAll('[data-test="header-app-logo"]');
       expect(imgs.length).toBeGreaterThan(0);
-      expect(imgs[0].attributes("src")).toContain("openobserve");
+      expect(imgs[0].attributes("src")).toContain("eo_logo");
     });
 
     it("should display red warning icon when quota is exactly 95%", () => {

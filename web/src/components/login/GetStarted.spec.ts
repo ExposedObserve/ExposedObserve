@@ -1,3 +1,6 @@
+// Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, VueWrapper, flushPromises } from "@vue/test-utils";
 import { createStore } from "vuex";
@@ -328,8 +331,12 @@ describe("GetStarted.vue", () => {
       const terms = wrapper.find('[data-test="onboarding-get-started-terms-link"]');
       const privacy = wrapper.find('[data-test="onboarding-get-started-privacy-link"]');
 
-      expect(terms.attributes("href")).toBe("https://openobserve.ai/legal/terms-of-service/");
-      expect(privacy.attributes("href")).toBe("https://openobserve.ai/legal/privacy-policy/");
+      expect(terms.attributes("href")).toBe(
+        "https://github.com/ExposedObserve/ExposedObserve/blob/master/LICENSE",
+      );
+      expect(privacy.attributes("href")).toBe(
+        "https://github.com/ExposedObserve/ExposedObserve/blob/master/SECURITY.md",
+      );
       for (const link of [terms, privacy]) {
         expect(link.attributes("target")).toBe("_blank");
         expect(link.attributes("rel")).toBe("noopener");

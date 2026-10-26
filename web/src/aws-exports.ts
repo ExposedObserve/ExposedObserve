@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -12,6 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import { resolveAppName, resolveLogoDark, resolveLogoLight } from "@/constants/brand";
 
 // LLM UI visibility is controlled at build time via the
 // `VITE_OPENOBSERVE_LLM_UI` env var. Visible by default; set the env
@@ -53,6 +56,13 @@ const config = {
   // default; set the env var to "false" to hide. Consumers use the
   // existing string check `config.showLLMUI !== 'false'`.
   showLLMUI: readLLMUIFlag(),
+  // Product name shown in the browser tab, login footer and header. Overridable
+  // at build time with `VITE_APP_NAME` for white-label deployments.
+  appName: resolveAppName(import.meta.env),
+  // Logo paths, relative to `src/assets/`. Overridable at build time with
+  // `VITE_LOGO_LIGHT` / `VITE_LOGO_DARK` for white-label deployments.
+  logoLight: resolveLogoLight(import.meta.env),
+  logoDark: resolveLogoDark(import.meta.env),
 };
 
 export default config;

@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -21,11 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         data-test="aws-marketplace-setup-logo"
         class="h-10"
         loading="lazy"
-        :src="
-          isDark
-            ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-            : getImageURL('images/common/openobserve_latest_light_2.svg')
-        "
+        :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
       />
     </div>
 
@@ -193,6 +190,7 @@ import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { useTheme } from "@/composables/useTheme";
 import { raw, useI18nTyped } from "@/types/i18n";
+import config from "@/aws-exports";
 import { getImageURL, useLocalOrganization } from "@/utils/zincutils";
 import awsMarketplace from "@/services/awsMarketplace";
 import organizationsService from "@/services/organizations";
@@ -396,6 +394,7 @@ export default defineComponent({
     return {
       t,
       raw,
+      config,
       store,
       isDark,
       state,
