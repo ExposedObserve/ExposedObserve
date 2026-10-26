@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +17,11 @@
 mod org_blocking;
 mod password_policy;
 mod root_only;
+mod sso;
 
 pub use org_blocking::blocked_orgs_middleware;
 pub use password_policy::password_policy_middleware;
 pub use root_only::root_only_middleware;
+pub use sso::active_auth_middleware;
+#[cfg(feature = "sso")]
+pub use sso::sso_auth_middleware;

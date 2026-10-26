@@ -41,6 +41,7 @@ vectorscan = [
     "promql-service/vectorscan",
     "stream/vectorscan",
 ]
+sso = ["dep:oidc"]
 profiling = [
     "dep:jemalloc_pprof",
     "dep:pprof",
@@ -112,6 +113,7 @@ reqwest.workspace = true
 sea-orm.workspace = true
 serde.workspace = true
 sha2.workspace = true
+oidc = { workspace = true, optional = true }
 serde_json.workspace = true
 sqlparser.workspace = true
 snap.workspace = true

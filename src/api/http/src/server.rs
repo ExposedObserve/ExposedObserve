@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +17,8 @@
 use std::{cmp::max, net::SocketAddr, time::Duration};
 
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
+#[cfg(feature = "sso")]
+use oidc;
 use tower_http::compression::CompressionLayer;
 
 use crate::handler::http::router::create_app_router;
@@ -37,7 +40,14 @@ pub async fn run(ui_routes: fn(&str) -> axum::Router) -> Result<(), anyhow::Erro
         }
     );
 
-    let app = apply_common_middlewares(create_app_router(ui_routes)).layer(CompressionLayer::new());
+    #[cfg(feature = "sso")]
+    if let Err(e) = oidc::init().await {
+        log::error!("OIDC init failed: {e}");
+    }
+
+    let app = apply_common_middlewares(create_app_router(ui_routes))
+        .await
+        .layer(CompressionLayer::new());
     let app = if !cfg.common.tracing_enabled
         && (cfg.common.tracing_search_enabled || cfg.common.search_inspector_enabled)
     {
@@ -66,23 +76,29 @@ pub fn server_addr() -> Result<SocketAddr, anyhow::Error> {
 }
 
 /// Apply access logging, slow logging and client IP resolution.
-pub fn apply_common_middlewares(app: axum::Router) -> axum::Router {
+pub async fn apply_common_middlewares(app: axum::Router) -> axum::Router {
     let cfg = config::get_config();
     let ip_sources = config::axum::middlewares::resolve_client_ip_sources(&cfg.http.real_ip_source);
     log::info!(
         "HTTP client IP sources (in order, implicit ConnectInfo fallback): {}",
         cfg.http.real_ip_source
     );
-    app.layer(config::axum::middlewares::AccessLogLayer::new(
-        config::axum::middlewares::get_http_access_log_format(),
-    ))
-    .layer(config::axum::middlewares::SlowLogLayer::new(
-        cfg.limit.http_slow_log_threshold,
-    ))
-    .layer(axum::middleware::from_fn(
-        config::axum::middlewares::extract_real_ip,
-    ))
-    .layer(axum::Extension(ip_sources))
+    let mut app: axum::Router = app
+        .layer(config::axum::middlewares::AccessLogLayer::new(
+            config::axum::middlewares::get_http_access_log_format(),
+        ))
+        .layer(config::axum::middlewares::SlowLogLayer::new(
+            cfg.limit.http_slow_log_threshold,
+        ))
+        .layer(axum::middleware::from_fn(
+            config::axum::middlewares::extract_real_ip,
+        ))
+        .layer(axum::Extension(ip_sources));
+    #[cfg(feature = "sso")]
+    if oidc::store::OIDC_STORE.need_session() {
+        app = oidc::session::add_session_layer(app);
+    }
+    app
 }
 
 /// Serve a router with the configured TLS and bounded graceful shutdown.

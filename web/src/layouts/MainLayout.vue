@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -104,13 +105,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
           >
             <img
               class="h-6 w-auto"
-              :src="
-                getImageURL(
-                  isDark
-                    ? 'images/common/openobserve_latest_dark_2.svg'
-                    : 'images/common/openobserve_latest_light_2.svg',
-                )
-              "
+              :src="getImageURL(isDark ? config.logoDark : config.logoLight)"
               :alt="raw('OpenObserve')"
             />
             <OButton
@@ -252,6 +247,7 @@ import {
 } from "vue";
 import { useStore } from "vuex";
 import { useTheme } from "@/composables/useTheme";
+import { useOidcNotice } from "@/composables/useOidcNotice";
 import { useRouter, RouterView } from "vue-router";
 import config from "../aws-exports";
 
@@ -385,6 +381,15 @@ export default defineComponent({
     },
   },
   setup() {
+    // Surface any OIDC banners/errors the HTTP interceptor stashed
+    // in localStorage before the page reload that brought us here.
+    const { logout, error } = useOidcNotice().flush();
+    if (logout) {
+      toast({ variant: "error", message: `Session ended: ${logout}` });
+    }
+    if (error) {
+      toast({ variant: "error", message: error });
+    }
     const store: any = useStore();
     const { isDark } = useTheme();
     const router: any = useRouter();

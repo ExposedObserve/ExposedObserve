@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -395,7 +396,20 @@ pub async fn zo_config_bootstrap() -> impl IntoResponse {
     #[cfg(feature = "enterprise")]
     let block_features = block_feature_for_report_failure().await;
 
-    let sso_enabled = enterprise_value!(false, dex_cfg.dex_enabled, block_features);
+    // In the CE build with the `oss` feature, surface OIDC readiness to the
+    // login page as `sso_enabled = true`. The UI differentiates the two by
+    // `isEnterprise` and renders the right button. Without `oss` (plain CE
+    // with no OIDC compiled in), the value stays the enterprise default
+    // (`false`).
+    #[cfg(feature = "enterprise")]
+    let sso_enabled = {
+        let block_features = block_feature_for_report_failure().await;
+        enterprise_value!(false, dex_cfg.dex_enabled, block_features)
+    };
+    #[cfg(all(not(feature = "enterprise"), feature = "sso"))]
+    let sso_enabled = oidc::config::get_oidc_config().is_enabled();
+    #[cfg(not(any(feature = "enterprise", feature = "sso")))]
+    let sso_enabled = false;
     let native_login_enabled = enterprise_value!(true, dex_cfg.native_login_enabled);
     let custom_logo_text = enterprise_value!(
         "".to_string(),

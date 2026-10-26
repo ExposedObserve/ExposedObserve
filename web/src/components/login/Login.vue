@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -60,11 +61,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             :style="
               store.state.zoConfig.custom_logo_text != '' ? 'width: 9.375rem;' : 'width: 15.625rem;'
             "
-            :src="
-              isDark
-                ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-                : getImageURL('images/common/openobserve_latest_light_2.svg')
-            "
+            :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
             :alt="t('login.openObserveLogoAlt')"
           />
         </a>
@@ -77,11 +74,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               store.state.zoConfig.custom_logo_text != '' ? 'width: 9.375rem;' : 'width: 15.625rem;'
             "
             :alt="t('login.openObserveLogoAlt')"
-            :src="
-              isDark
-                ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-                : getImageURL('images/common/openobserve_latest_light_2.svg')
-            "
+            :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
           />
         </a>
       </div>
@@ -280,7 +273,12 @@ export default defineComponent({
     });
 
     const showSSO = computed(() => {
-      return store.state.zoConfig.sso_enabled && config.isEnterprise === "true";
+      // On enterprise builds this fires when Dex SSO is configured. On
+      // the CE+`oss` build the backend reports OIDC readiness through
+      // the same `sso_enabled` flag (see `zo_config_bootstrap`); both
+      // paths render the same button — the click handler is what
+      // branches between `/config/dex_login` and `/auth/sso/login`.
+      return store.state.zoConfig.sso_enabled;
     });
 
     const showInternalLogin = computed(() => {
@@ -304,6 +302,16 @@ export default defineComponent({
     };
 
     const loginWithSSo = async () => {
+      // Enterprise Dex SSO path: the backend hands us a fully-formed
+      // login URL via /config/dex_login. On the CE+`oss` build, Dex
+      // is not compiled in — the same sso_enabled flag then signals
+      // OIDC readiness, and the backend mounts the OIDC start at
+      // /auth/sso/login. Branch on the build type so the same button
+      // covers both flows.
+      if (config.isEnterprise !== "true") {
+        window.location.href = "/auth/sso/login";
+        return;
+      }
       try {
         authService.get_dex_login().then((res) => {
           if (res) {

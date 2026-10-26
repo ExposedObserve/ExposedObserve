@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -23,11 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
           class="h-10 max-h-10 w-auto max-w-50 cursor-pointer"
           loading="lazy"
           :alt="t('login.openObserveLogoAlt')"
-          :src="
-            isDark
-              ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-              : getImageURL('images/common/openobserve_latest_light_2.svg')
-          "
+          :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
         />
       </a>
     </div>
@@ -62,6 +59,7 @@ import {
 import usersService from "@/services/users";
 import organizationsService from "@/services/organizations";
 import { useReo } from "@/services/reodotdev_analytics";
+import { getUserInfoFromClaims } from "@/utils/oidcutils";
 import { toast } from "@/lib/feedback/Toast/useToast";
 import { useI18nTyped } from "@/types/i18n";
 import { isSameOriginRedirect } from "@/utils/safeUrl";
@@ -321,7 +319,7 @@ export default defineComponent({
           if (!this.store.state.zoConfig?.version) {
             this.store.commit("setConfig", data);
           }
-          const token = getUserInfo(this.$route.hash);
+          const token = getUserInfoFromClaims(this.$route.hash) ?? getUserInfo(this.$route.hash);
 
           if (token !== null && token.email != null) {
             this.user.email = token.email;
