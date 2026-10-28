@@ -66,14 +66,20 @@ COPY --from=webbuilder /web/dist web/dist
 # docker-compose Redis service actually usable — without it a runtime
 # OIDC_REDIS_URL is rejected because the session layer is compiled in-memory-only.
 #
-# `--jobs` stays low on purpose: the `web` crate expands ~75MB of embedded UI
-# assets in a proc macro, and that expansion peaks high enough to OOM a 16GB
-# runner when it runs next to the other heavy crates.
+# The build runs in two phases because the `web` crate expands ~75MB of embedded
+# UI assets in a proc macro, and that expansion alone needs more memory than a
+# 16GB runner has left once the other heavy crates are running next to it.
+# Phase 1 compiles everything except the root package and `web`, so no proc
+# macro competes for RAM; phase 2 compiles `web` and the root package on their
+# own, single-threaded. Both phases select the same features for the crates
+# they share, so nothing is compiled twice.
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git/db \
     --mount=type=cache,id=rustup,target=/usr/local/rustup \
     --mount=type=cache,id=target,target=/exposedobserve/target \
-    cargo build --release --features mimalloc,sso-redis --jobs "$CARGO_JOBS" && \
+    cargo build --release --features openobserve-api-http/sso-redis \
+        --workspace --exclude openobserve --exclude web --jobs "$CARGO_JOBS" && \
+    cargo build --release --features mimalloc,sso-redis --jobs 1 && \
     mkdir -p /out && \
     cp target/release/exposedobserve /out/exposedobserve
 
