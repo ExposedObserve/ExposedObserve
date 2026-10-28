@@ -5,12 +5,23 @@ on:
     branches: [ "master", "eo-dev" , "eo-dev-*" ]
     tags: [ "eo-v*.*.*" ]
 
+  workflow_dispatch:
+    inputs:
+      forced_runner:
+        description: 'Choose runner'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - 'ubuntu-latest'
+          - 'self-hosted'
+
 env:
   REGISTRY: ghcr.io
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.forced_runner || vars.TARGET_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -187,9 +198,6 @@ jobs:
           build-args: |
             GIT_VERSION=${{ steps.meta.outputs.git_version }}
             GIT_COMMIT_HASH=${{ github.sha }}
-            # The `web` crate expands ~75MB of embedded UI assets in a proc macro;
-            # at 4 parallel jobs that expansion runs next to the other heavy
-            # crates and OOMs the 16GB runner. 2 matches the local build script.
-            CARGO_JOBS=2
+            CARGO_JOBS=4
           push: true
           tags: ${{ steps.meta.outputs.tags }}
