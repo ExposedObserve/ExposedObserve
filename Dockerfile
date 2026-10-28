@@ -6,6 +6,13 @@
 
 FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS webbuilder
 
+# The vite config runs scripts/fetch-datasource-content.mjs before the build, which shallow-clones the AI data-source content repo with the git binary.
+# The slim image ships neither git nor the CA bundle, so the clone fails with `spawnSync git ENOENT` and the build aborts.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /web
 
 COPY ./web/package*.json ./
@@ -58,6 +65,10 @@ COPY --from=webbuilder /web/dist web/dist
 # a free CI runner. `sso-redis` (not the default `sso`) is what makes the
 # docker-compose Redis service actually usable — without it a runtime
 # OIDC_REDIS_URL is rejected because the session layer is compiled in-memory-only.
+#
+# `--jobs` stays low on purpose: the `web` crate expands ~75MB of embedded UI
+# assets in a proc macro, and that expansion peaks high enough to OOM a 16GB
+# runner when it runs next to the other heavy crates.
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git/db \
     --mount=type=cache,id=rustup,target=/usr/local/rustup \

@@ -187,6 +187,9 @@ jobs:
           build-args: |
             GIT_VERSION=${{ steps.meta.outputs.git_version }}
             GIT_COMMIT_HASH=${{ github.sha }}
-            CARGO_JOBS=4
+            # The `web` crate expands ~75MB of embedded UI assets in a proc macro;
+            # at 4 parallel jobs that expansion runs next to the other heavy
+            # crates and OOMs the 16GB runner. 2 matches the local build script.
+            CARGO_JOBS=2
           push: true
           tags: ${{ steps.meta.outputs.tags }}
