@@ -1,4 +1,5 @@
 ﻿<!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -197,7 +198,7 @@ import { isInputFocused } from "@/utils/keyboardShortcuts";
 
 // Pending invitation row shape returned by GET /api/invites, enriched locally
 // with the row index (`#`) and a formatted `expiry` label.
-interface PendingInvitation {
+export interface PendingInvitation {
   "#": string | number;
   token: string;
   org_id: string;

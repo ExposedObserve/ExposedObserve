@@ -1,4 +1,5 @@
 ﻿<!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -22,11 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <div class="bg-card-glass-bg rounded-default relative overflow-hidden p-4">
           <div class="relative z-1">
             <img
-              :src="
-                isDark
-                  ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-                  : getImageURL('images/common/openobserve_latest_light_2.svg')
-              "
+              :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
               class="block max-w-55"
               width="220"
             />
@@ -104,7 +101,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             <div class="text-text-secondary text-sm">{{ t("about.os_libraries_msg") }}</div>
             <div class="grid grid-cols-4 gap-2.5 max-md:grid-cols-1">
               <a
-                href="https://github.com/openobserve/openobserve/blob/main/Cargo.toml"
+                href="https://github.com/ExposedObserve/ExposedObserve/blob/master/Cargo.toml"
                 target="_blank"
                 class="border-card-glass-border rounded-default bg-card-glass-bg hover:border-accent/35 flex items-center gap-3 border px-3.5 py-3 no-underline transition-all duration-200"
               >
@@ -119,7 +116,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 <OIcon name="open-in-new" size="sm" class="text-text-muted shrink-0" />
               </a>
               <a
-                href="https://github.com/openobserve/openobserve/blob/main/web/package.json"
+                href="https://github.com/ExposedObserve/ExposedObserve/blob/master/web/package.json"
                 target="_blank"
                 class="border-card-glass-border rounded-default bg-card-glass-bg hover:border-accent/35 flex items-center gap-3 border px-3.5 py-3 no-underline transition-all duration-200"
               >
@@ -192,7 +189,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             >
               {{ t("about.license_info_os_msg") }}
               <a
-                href="https://github.com/openobserve/openobserve/blob/main/LICENSE"
+                href="https://github.com/ExposedObserve/ExposedObserve/blob/master/LICENSE"
                 target="_blank"
                 class="text-text-link hover:border-text-link border-text-link/35 border-b font-medium no-underline transition-colors duration-200"
                 >{{ t("about.agplFullName") }}</a
@@ -228,7 +225,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             }}</OText>
             <div class="flex flex-wrap gap-2">
               <a
-                href="https://github.com/openobserve/openobserve"
+                href="https://github.com/ExposedObserve/ExposedObserve"
                 target="_blank"
                 class="rounded-default text-accent border-accent/18 bg-card-glass-tint-soft inline-flex items-center gap-1.5 border px-3.5 py-2 text-sm font-medium no-underline transition-all duration-200"
               >
@@ -236,7 +233,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 {{ t("about.github") }}
               </a>
               <a
-                href="https://openobserve.ai"
+                :href="config.websiteUrl"
                 target="_blank"
                 class="rounded-default text-accent border-accent/18 bg-card-glass-tint-soft inline-flex items-center gap-1.5 border px-3.5 py-2 text-sm font-medium no-underline transition-all duration-200"
               >

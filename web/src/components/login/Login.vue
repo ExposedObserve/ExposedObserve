@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -51,7 +52,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         </span>
         <a
           v-if="store.state.zoConfig.custom_hide_self_logo == false"
-          href="https://openobserve.ai/"
+          :href="config.websiteUrl"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -60,28 +61,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             :style="
               store.state.zoConfig.custom_logo_text != '' ? 'width: 9.375rem;' : 'width: 15.625rem;'
             "
-            :src="
-            isDark
-              ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-              : getImageURL('images/common/openobserve_latest_light_2.svg')
-          "
+            :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
             :alt="t('login.openObserveLogoAlt')"
           />
         </a>
       </div>
       <div class="mb-4 flex justify-center" v-else>
-        <a href="https://openobserve.ai/" target="_blank" rel="noopener noreferrer">
+        <a :href="config.websiteUrl" target="_blank" rel="noopener noreferrer">
           <img
             class="appLogo h-auto"
             :style="
               store.state.zoConfig.custom_logo_text != '' ? 'width: 9.375rem;' : 'width: 15.625rem;'
             "
             :alt="t('login.openObserveLogoAlt')"
-            :src="
-            isDark
-              ? getImageURL('images/common/openobserve_latest_dark_2.svg')
-              : getImageURL('images/common/openobserve_latest_light_2.svg')
-          "
+            :src="isDark ? getImageURL(config.logoDark) : getImageURL(config.logoLight)"
           />
         </a>
       </div>

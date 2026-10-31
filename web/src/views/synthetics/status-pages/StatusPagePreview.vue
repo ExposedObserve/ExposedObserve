@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -74,7 +75,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             <!-- The mark's central glyph inherits currentColor (heading ink) so it
                  reads in both themes; the four petals keep their brand colors. -->
             <a
-              href="https://openobserve.ai/"
+              :href="config.websiteUrl"
               target="_blank"
               rel="noopener noreferrer"
               class="flex items-center gap-1.5 hover:underline focus-visible:underline"
@@ -170,7 +171,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
           <!-- The mark's central glyph inherits currentColor (heading ink) so it
                reads in both themes; the four petals keep their brand colors. -->
           <a
-            href="https://openobserve.ai/"
+            :href="config.websiteUrl"
             target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-1.5 hover:underline focus-visible:underline"
@@ -215,6 +216,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18nTyped } from "@/types/i18n";
+import config from "@/aws-exports";
 import OBadge from "@/lib/core/Badge/OBadge.vue";
 
 const props = defineProps<{

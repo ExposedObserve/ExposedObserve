@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -112,7 +113,10 @@ pub async fn notify_check_result(n: CheckNotification) {
                 };
 
                 let subject = if n.recovery {
-                    format!("[OpenObserve Synthetics] ✅ {} has RECOVERED", n.check_name)
+                    format!(
+                        "[ExposedObserve Synthetics] ✅ {} has RECOVERED",
+                        n.check_name
+                    )
                 } else if n.degraded {
                     // Not "is WARNING": the point of the message is that this needs
                     // action before it becomes an outage. Named where we know the
@@ -121,20 +125,23 @@ pub async fn notify_check_result(n: CheckNotification) {
                     // gets renewed where a generic "DEGRADED" gets skimmed.
                     match n.status_reason.as_deref() {
                         Some("cert_expiring") => format!(
-                            "[OpenObserve Synthetics] 🟡 {} — CERTIFICATE EXPIRING SOON",
+                            "[ExposedObserve Synthetics] 🟡 {} — CERTIFICATE EXPIRING SOON",
                             n.check_name
                         ),
                         Some("sftp_degraded") => format!(
-                            "[OpenObserve Synthetics] 🟡 {} — SFTP DEGRADED",
+                            "[ExposedObserve Synthetics] 🟡 {} — SFTP DEGRADED",
                             n.check_name
                         ),
-                        _ => format!("[OpenObserve Synthetics] 🟡 {} is DEGRADED", n.check_name),
+                        _ => format!(
+                            "[ExposedObserve Synthetics] 🟡 {} is DEGRADED",
+                            n.check_name
+                        ),
                     }
                 } else if n.flaky {
-                    format!("[OpenObserve Synthetics] 🔁 {} is FLAKY", n.check_name)
+                    format!("[ExposedObserve Synthetics] 🔁 {} is FLAKY", n.check_name)
                 } else {
                     format!(
-                        "[OpenObserve Synthetics] {} {} is {}",
+                        "[ExposedObserve Synthetics] {} {} is {}",
                         status_emoji(&n),
                         n.check_name,
                         n.status.to_uppercase()
@@ -784,7 +791,7 @@ async fn notify_location_down(
     use config::meta::destinations::{DestinationType, Module};
 
     let subject = format!(
-        "[OpenObserve Synthetics] 🔴 Private location {} is DOWN",
+        "[ExposedObserve Synthetics] 🔴 Private location {} is DOWN",
         loc.label
     );
     let text = format!(
