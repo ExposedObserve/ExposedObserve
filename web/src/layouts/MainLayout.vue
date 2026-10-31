@@ -252,6 +252,7 @@ import {
 } from "vue";
 import { useStore } from "vuex";
 import { useTheme } from "@/composables/useTheme";
+import { useOidcNotice } from "@/composables/useOidcNotice";
 import { useRouter, RouterView } from "vue-router";
 import config from "../aws-exports";
 
@@ -385,6 +386,15 @@ export default defineComponent({
     },
   },
   setup() {
+    // Surface any OIDC banners/errors the HTTP interceptor stashed
+    // in localStorage before the page reload that brought us here.
+    const { logout, error } = useOidcNotice().flush();
+    if (logout) {
+      toast({ variant: "error", message: `Session ended: ${logout}` });
+    }
+    if (error) {
+      toast({ variant: "error", message: error });
+    }
     const store: any = useStore();
     const { isDark } = useTheme();
     const router: any = useRouter();

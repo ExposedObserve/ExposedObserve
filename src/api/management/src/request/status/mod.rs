@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -384,6 +385,26 @@ pub async fn schedulez() -> impl IntoResponse {
     )
 }
 
+/// Whether SSO is available for the login screen.
+///
+/// Both the unauthenticated bootstrap and the authenticated full config answer
+/// this, and they must agree: the SPA keeps the full config in the store after
+/// logout, and the login screen reads `sso_enabled` from there. A disagreement
+/// shows the local username/password form instead of the SSO button.
+#[cfg(feature = "enterprise")]
+async fn sso_enabled_for_login() -> bool {
+    let block_features = block_feature_for_report_failure().await;
+    enterprise_value!(false, get_dex_config().dex_enabled, block_features)
+}
+#[cfg(all(not(feature = "enterprise"), feature = "sso"))]
+async fn sso_enabled_for_login() -> bool {
+    oidc::config::get_oidc_config().is_enabled()
+}
+#[cfg(not(any(feature = "enterprise", feature = "sso")))]
+async fn sso_enabled_for_login() -> bool {
+    false
+}
+
 /// Unauthenticated login-page bootstrap; the full config is served
 /// authenticated by [`zo_config`].
 pub async fn zo_config_bootstrap() -> impl IntoResponse {
@@ -393,10 +414,12 @@ pub async fn zo_config_bootstrap() -> impl IntoResponse {
     #[cfg(feature = "enterprise")]
     let dex_cfg = get_dex_config();
 
-    #[cfg(feature = "enterprise")]
-    let block_features = block_feature_for_report_failure().await;
-
-    let sso_enabled = enterprise_value!(false, dex_cfg.dex_enabled, block_features);
+    // In the CE build with the `oss` feature, surface OIDC readiness to the
+    // login page as `sso_enabled = true`. The UI differentiates the two by
+    // `isEnterprise` and renders the right button. Without `oss` (plain CE
+    // with no OIDC compiled in), the value stays the enterprise default
+    // (`false`).
+    let sso_enabled = sso_enabled_for_login().await;
     let native_login_enabled = enterprise_value!(true, dex_cfg.native_login_enabled);
     let custom_logo_text = enterprise_value!(
         "".to_string(),
@@ -449,10 +472,10 @@ pub async fn zo_config(
     #[cfg(feature = "enterprise")]
     let openfga_cfg = get_openfga_config();
 
-    #[cfg(feature = "enterprise")]
-    let block_features = block_feature_for_report_failure().await;
-
-    let sso_enabled = enterprise_value!(false, dex_cfg.dex_enabled, block_features);
+    // Must match the bootstrap `/config` value: the SPA keeps the full config
+    // in the store after logout, and the login screen reads `sso_enabled`
+    // from there to decide between the SSO button and the local login form.
+    let sso_enabled = sso_enabled_for_login().await;
     let native_login_enabled = enterprise_value!(true, dex_cfg.native_login_enabled);
     let service_account_enabled = cfg.auth.service_account_enabled;
     let rbac_enabled = enterprise_value!(false, rbac_enabled_for_config(openfga_cfg.enabled).await);
@@ -1933,6 +1956,64 @@ mod tests {
         assert_eq!(last_reported_timestamp().await, 0);
         assert!(rbac_enabled_for_config(true).await);
         assert!(!rbac_enabled_for_config(false).await);
+    }
+
+    #[cfg(all(not(feature = "enterprise"), feature = "sso"))]
+    #[tokio::test]
+    async fn test_full_config_reports_the_same_sso_enabled_as_the_bootstrap() {
+        // The SPA keeps the full config in the store after logout and the
+        // login screen reads `sso_enabled` from there, so the two endpoints
+        // must not disagree — that disagreement is what put the local
+        // username/password form in front of an OIDC user.
+        let cfg = oidc::config::OidcConfig::new(
+            "client",
+            None,
+            "https://idp.example.org",
+            "https://app.example.org/callback",
+            "https://app.example.org/callback",
+            oidc::config::HttpClientConfig::default(),
+            oidc::config::CookieConfig::default(),
+            oidc::config::SessionConfig::default(),
+            "org",
+            ".*",
+            Some("sub"),
+            Some("email"),
+            std::collections::HashSet::new(),
+        )
+        .unwrap();
+        oidc::config::set_config(cfg);
+
+        let bootstrap = axum::body::to_bytes(
+            zo_config_bootstrap().await.into_response().into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+        let bootstrap: serde_json::Value = serde_json::from_slice(&bootstrap).unwrap();
+
+        let full = axum::body::to_bytes(
+            zo_config(Path("default".to_string()), None)
+                .await
+                .into_response()
+                .into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+        let full: serde_json::Value = serde_json::from_slice(&full).unwrap();
+
+        assert_eq!(
+            bootstrap
+                .get("sso_enabled")
+                .and_then(serde_json::Value::as_bool),
+            Some(true),
+            "a configured OIDC provider must be reported as SSO enabled"
+        );
+        assert_eq!(
+            full.get("sso_enabled"),
+            bootstrap.get("sso_enabled"),
+            "full and bootstrap config must agree on sso_enabled"
+        );
     }
 
     #[test]

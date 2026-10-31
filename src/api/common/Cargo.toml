@@ -25,6 +25,7 @@ cloud = [
     "o2_enterprise/cloud",
     "openobserve-core/cloud",
 ]
+sso = ["dep:oidc", "openobserve-core/sso"]
 
 [dependencies]
 anyhow.workspace = true
@@ -40,6 +41,7 @@ log.workspace = true
 o2_dex = { workspace = true, optional = true }
 o2_enterprise = { workspace = true, optional = true, default-features = false }
 o2_openfga = { workspace = true, optional = true }
+oidc = { workspace = true, optional = true }
 openobserve-core.workspace = true
 regex.workspace = true
 serde.workspace = true

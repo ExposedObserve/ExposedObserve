@@ -62,6 +62,7 @@ import {
 import usersService from "@/services/users";
 import organizationsService from "@/services/organizations";
 import { useReo } from "@/services/reodotdev_analytics";
+import { getUserInfoFromClaims } from "@/utils/oidcutils";
 import { toast } from "@/lib/feedback/Toast/useToast";
 import { useI18nTyped } from "@/types/i18n";
 import { isSameOriginRedirect } from "@/utils/safeUrl";
@@ -321,7 +322,7 @@ export default defineComponent({
           if (!this.store.state.zoConfig?.version) {
             this.store.commit("setConfig", data);
           }
-          const token = getUserInfo(this.$route.hash);
+          const token = getUserInfoFromClaims(this.$route.hash) ?? getUserInfo(this.$route.hash);
 
           if (token !== null && token.email != null) {
             this.user.email = token.email;

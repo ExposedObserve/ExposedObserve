@@ -273,3 +273,18 @@ describe("initial theme default from localStorage (#14696)", () => {
     expect(freshStore.state.theme).toBe("light");
   });
 });
+
+describe("logout", () => {
+  it("drops the authenticated config so the login screen reads the bootstrap one", () => {
+    store.commit("setConfig", { version: "1.0.0", sso_enabled: false });
+    expect(store.state.zoConfig.version).toBe("1.0.0");
+
+    store.commit("logout");
+
+    // The login screen decides between the SSO button and the local login form
+    // from `zoConfig.sso_enabled`. The full config belongs to the signed-in
+    // session, so keeping it after logout is what showed the login form.
+    expect(store.state.zoConfig).toEqual({});
+    expect(store.state.loggedIn).toBe(false);
+  });
+});
