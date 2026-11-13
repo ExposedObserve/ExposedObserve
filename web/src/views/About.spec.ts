@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -30,6 +31,9 @@ vi.mock("@/aws-exports", () => ({
   default: {
     isCloud: "false",
     isEnterprise: "false",
+    appName: "ExposedObserve",
+    logoLight: "images/common/eo_logo_light.svg",
+    logoDark: "images/common/eo_logo_dark.svg",
   },
 }));
 

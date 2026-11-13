@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,13 +14,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, sea_query::OnConflict};
+use sea_orm::{
+    ColumnTrait, EntityTrait, QueryFilter, Schema, Set, entity::prelude::*, sea_query::OnConflict,
+};
 
 use super::entity::sessions::{ActiveModel, Column, Entity, Model};
 use crate::{
     db::{get_orm_client_ro, get_orm_client_rw},
     errors,
 };
+
+/// Create the sessions table if it does not exist yet.
+///
+/// Production creates it through the migration chain; this mirrors that for
+/// setups that only need the session tables.
+pub async fn create_table() -> Result<(), errors::Error> {
+    let client = get_orm_client_rw().await;
+    let builder = client.get_database_backend();
+    let create_table_stmt = Schema::new(builder)
+        .create_table_from_entity(Entity)
+        .if_not_exists()
+        .take();
+
+    client
+        .execute(builder.build(&create_table_stmt))
+        .await
+        .map_err(|e| errors::Error::DbError(errors::DbError::SeaORMError(e.to_string())))?;
+
+    Ok(())
+}
 
 /// Gets a session by session_id
 pub async fn get(session_id: &str) -> Result<Option<Model>, errors::Error> {

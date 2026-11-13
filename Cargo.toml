@@ -22,7 +22,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["sso"]
 enterprise = [
     "audit/enterprise",
     "openobserve-api-http/enterprise",
@@ -49,6 +49,13 @@ cloud = [
     "openobserve-core/cloud",
     "openobserve-jobs/cloud",
 ]
+sso = [
+    "dep:oidc",
+    "openobserve-api-http/sso",
+]
+# Redis-backed OIDC sessions. Only needed when OIDC_REDIS_URL is set at runtime:
+# without this feature the OIDC session layer rejects a Redis URL outright.
+sso-redis = ["sso", "openobserve-api-http/sso-redis"]
 mimalloc = ["dep:mimalloc"]
 jemalloc = ["dep:tikv-jemallocator"]
 profiling = [
@@ -216,6 +223,7 @@ async-stream.workspace = true
 sourcemap.workspace = true
 audit.workspace = true
 openobserve-api-http.workspace = true
+oidc = { workspace = true, optional = true }
 openobserve-api-grpc.workspace = true
 openobserve-api-management.workspace = true
 web.workspace = true
@@ -294,6 +302,7 @@ members = [
     "src/flight",
     "src/tantivy_utils",
     "src/web",
+    "src/oidc",
 ]
 resolver = "2"
 
@@ -307,6 +316,7 @@ pulldown-cmark = { version = "0.13", default-features = false, features = [
     "html",
 ] }
 config = { path = "src/config" }
+oidc = { path = "src/oidc" }
 infra = { path = "src/infra" }
 ingester = { path = "src/ingester" }
 wal = { path = "src/wal" }

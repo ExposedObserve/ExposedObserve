@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -181,6 +182,11 @@ export default createStore({
     logout(state) {
       state.loggedIn = false;
       state.userInfo = {};
+      // The full config belongs to the signed-in session. Keeping it makes the
+      // login screen read the authenticated values (e.g. `sso_enabled`) instead
+      // of the bootstrap ones, which is what shows the local login form after
+      // a logout from an OIDC session.
+      state.zoConfig = {};
     },
     endpoint(state, payload) {
       state.API_ENDPOINT = payload;

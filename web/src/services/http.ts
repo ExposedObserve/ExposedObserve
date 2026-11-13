@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -34,6 +35,8 @@ export const attemptTokenRefresh = (requestUrl: string = ""): Promise<void> => {
   if (
     requestUrl.includes("/config/dex_login") ||
     requestUrl.includes("/config/dex_refresh") ||
+    requestUrl.includes("/auth/sso/login") ||
+    requestUrl.includes("/auth/sso/callback") ||
     requestUrl.includes("/auth/login")
   ) {
     return Promise.reject(new Error("Cannot refresh: auth endpoint"));
@@ -48,14 +51,23 @@ export const attemptTokenRefresh = (requestUrl: string = ""): Promise<void> => {
     return Promise.reject(new Error("Cloud environment: direct logout"));
   }
 
-  if (config.isEnterprise == "true" && (store.state as any).zoConfig.sso_enabled) {
+  if ((store.state as any).zoConfig.sso_enabled) {
     if (!refreshPromise) {
       const refreshInstance = axios.create({
         withCredentials: true,
         baseURL: store.state.API_ENDPOINT,
       });
-      refreshPromise = refreshInstance
-        .get("/config/dex_refresh")
+      // Enterprise uses Dex and exposes refresh at /config/dex_refresh
+      // (GET). CE+oss relies on the backend to refresh the
+      // `auth_tokens` cookie transparently on the next request (see
+      // `api/common::auth::token::token_validator` under the `oss`
+      // feature), so the SPA has nothing to call — the response just
+      // carries a fresh Set-Cookie the browser picks up.
+      const refreshRequest =
+        config.isEnterprise == "true"
+          ? refreshInstance.get("/config/dex_refresh")
+          : Promise.resolve({ status: 200 });
+      refreshPromise = refreshRequest
         .then((res) => {
           if (res.status !== 200) {
             return Promise.reject(new Error("Refresh returned non-200"));
@@ -116,36 +128,73 @@ const http = ({ headers } = {} as any) => {
         return new Promise(() => {});
       }
       if (error && error.response && error.response.status) {
+        const reason =
+          (error.response.data as { message?: string } | undefined)?.message ?? "Unknown error";
+        console.warn("error?.response?.data", error?.response?.data);
+        console.warn("error?.response", error?.response);
+        console.warn("error", error);
         switch (error.response.status) {
           case 400:
+            try {
+              localStorage.setItem("oidc_error_msg", reason);
+            } catch {
+              /* localStorage may be unavailable in private mode */
+            }
             break;
           case 401:
             if (config.isCloud == "true" && !error.request.responseURL.includes("/auth/login")) {
+              console.warn("Auth error; redirecting to /web/login", reason);
               store.dispatch("logout");
               useLocalCurrentUser("", true);
               useLocalUserInfo("", true);
               sessionStorage.clear();
-              window.location.reload();
+              // Navigate to the login screen so the SPA stops issuing
+              // 401-bound requests on the same broken session. A reload
+              // would re-fire the in-flight fetches before navigation
+              // completes and trip the 401 path again.
+              window.location.assign("/web/login");
             }
-            // Delegate to the shared refresh helper — it owns the URL exclusion
-            // checks and the logout-on-failure path. Retry the original request
-            // once the token is refreshed.
-            else if (config.isEnterprise == "true" && (store.state as any).zoConfig.sso_enabled) {
-              return attemptTokenRefresh(error.config.url)
-                .then(() => instance.request(error.config))
-                .catch(() => Promise.reject(error));
+            // OIDC sessions don't have a client-side refresh. The
+            // backend either rotated the `auth_tokens` cookie
+            // transparently (success) or cleared it (hard failure); in
+            // both cases the next request would either succeed or land
+            // here again. Drop the local session and hand control back
+            // to the login screen with a single navigate so the SPA
+            // stops re-issuing 401-bound requests on the same broken
+            // session.
+            else if ((store.state as any).zoConfig.sso_enabled) {
+              // The login screen reads this key on mount to render an
+              // inline banner / toast explaining why the user landed
+              // back here. The `assign` below destroys the current
+              // page, so any toast raised from the interceptor itself
+              // is dropped before it can paint.
+              try {
+                localStorage.setItem("oidc_logout_msg", reason);
+              } catch {
+                /* localStorage may be unavailable in private mode */
+              }
+              store.dispatch("logout");
+              useLocalCurrentUser("", true);
+              useLocalUserInfo("", true);
+              sessionStorage.clear();
+              window.location.assign("/web/login");
+              return Promise.reject(error);
             } else {
               if (!error.request.responseURL.includes("/login")) {
                 store.dispatch("logout");
                 useLocalCurrentUser("", true);
                 useLocalUserInfo("", true);
                 sessionStorage.clear();
-                window.location.reload();
+                window.location.assign("/web/login");
               }
             }
             break;
           case 403:
-            if (config.isEnterprise == "true" || config.isCloud == "true") {
+            if (
+              (store.state as any).zoConfig.sso_enabled ||
+              config.isEnterprise == "true" ||
+              config.isCloud == "true"
+            ) {
               const responseUrl = error.request?.responseURL || error.config?.url || "";
               addUnauthorizedError(responseUrl);
             }
