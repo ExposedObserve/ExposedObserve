@@ -1,14 +1,14 @@
 [package]
-description = "OpenObserve is an observability platform that allows you to capture, search, and analyze your logs, metrics, and traces."
+description = "ExposedObserve is an observability platform that allows you to capture, search, and analyze your logs, metrics, and traces."
 edition = "2024"
-homepage = "https://openobserve.ai/"
+homepage = "https://github.com/ExposedObserve/ExposedObserve"
 keywords = [
     "search",
     "log",
     "metrics",
     "traces",
     "analytics",
-    "openobserve",
+    "exposedobserve",
     "observability",
     "open source",
     "open-source",
@@ -16,10 +16,17 @@ keywords = [
 ]
 license = "AGPL-3.0"
 name = "openobserve"
-repository = "https://github.com/openobserve/openobserve/"
+repository = "https://github.com/ExposedObserve/ExposedObserve/"
 version = "0.93.0"
 publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Fork-only override: the package/crate name stays `openobserve` (it is a
+# contract with the upstream workspace), but the shipped artifact is branded.
+# This is the single place the CI/Docker layer reads the binary name from.
+[[bin]]
+name = "exposedobserve"
+path = "src/main.rs"
 
 [features]
 default = ["sso"]

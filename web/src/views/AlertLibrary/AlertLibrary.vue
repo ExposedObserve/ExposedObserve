@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -49,18 +50,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
           @click="refresh"
         />
       </template>
-      <template #actions-overflow>
-        <OButton
-          variant="outline"
-          size="sm"
-          icon-left="open-in-new"
-          data-test="alert-library-contribute"
-          @click="openContribute"
-        >
-          {{ t("alert_library.contribute") }}
-        </OButton>
-      </template>
-
       <div class="flex min-h-0 flex-1">
         <div class="w-rail border-border-default h-full shrink-0 border-e max-md:hidden">
           <LibraryRail
@@ -373,9 +362,6 @@ import OStatStrip from "@/lib/data/StatStrip/OStatStrip.vue";
 import type { StatItem } from "@/lib/data/StatStrip/OStatStrip.types";
 import type { AlertLibraryEntry, AlertLibraryFile, StreamsByType } from "@/types/alertLibrary";
 import { raw, useI18nTyped, type I18nKey } from "@/types/i18n";
-
-/** Where the alerts are authored. Not the serving URL — that is a constant. */
-const CONTRIBUTE_URL = "https://github.com/openobserve/o2-alerts-library";
 
 const { t } = useI18nTyped();
 const store = useStore();
@@ -813,10 +799,6 @@ const onInstallOpenChange = (open: boolean) => {
     installSeed.value = null;
     pendingBatch.value = [];
   }
-};
-
-const openContribute = () => {
-  window.open(CONTRIBUTE_URL, "_blank", "noopener");
 };
 
 const goToIngestion = () => {
