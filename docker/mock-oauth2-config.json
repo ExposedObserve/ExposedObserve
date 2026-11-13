@@ -1,0 +1,19 @@
+{
+  "interactiveLogin": true,
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "requestMappings": [
+        {
+          "requestParam": "code",
+          "match": "*",
+          "claims": {
+            "sub": "sso-test-user",
+            "email": "test@example.com",
+            "name": "OSS Test User",
+            "groups": ["default/admin", "eo/user"] }
+        }
+      ]
+    }
+  ]
+}

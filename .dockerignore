@@ -1,0 +1,71 @@
+# Rust
+target/
+**/*.rs.bk
+**/*.swp
+.cargo/.crates.toml
+.cargo/.crates*.json
+
+# Git
+.git/
+.gitignore
+
+# Node.js
+web/node_modules/
+web/dist/
+web/coverage/
+# Local bundle-stats artifact from `npm run build`: 4.7 MB, git-ignored, and
+# never read by the image build.
+web/stats.html
+
+# Docker
+docker/
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# IDE
+.idea/
+.vscode/
+.zed/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+LICENSE
+docs/
+
+# CI/CD
+.github/
+
+# Scripts
+scripts/
+
+# Tests
+tests/
+
+# Config files
+.env*
+
+# Data
+data/
+
+# Benchmarks
+benchmarks/
+
+# Non-build tree content: SBOM/audit artifacts, profiling output and CI/CD
+# scaffolding are not inputs to the image, and each one is a cache-buster.
+# `config/` is deliberately NOT here: config/prebuilt-destinations.json is
+# embedded by the alert code.
+deploy/
+cross/
+qa-reports/
+screenshots/
+openobserve.cdx.xml
+web/sbom.json
+web/coverage.sh
+download.sh
+downloadO2.sh
