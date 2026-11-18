@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -369,7 +370,7 @@ pub fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, a
             .build(),
         )
         };
-        log::info!("Main OpenObserve OTLP exporter configured");
+        log::info!("Main ExposedObserve OTLP exporter configured");
     }
 
     // Handle AI tracing (enterprise feature)
@@ -384,7 +385,9 @@ pub fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, a
             && !cfg.common.tracing_enabled
             && !cfg.common.tracing_search_enabled
         {
-            log::info!("AI tracing enabled independently - configuring OpenObserve OTLP exporter");
+            log::info!(
+                "AI tracing enabled independently - configuring ExposedObserve OTLP exporter"
+            );
 
             // Add OpenObserve exporter for AI traces
             if !cfg.common.otel_otlp_url.is_empty() {
@@ -423,7 +426,7 @@ pub fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, a
 
                 tracer_builder = tracer_builder.with_span_processor(filtered_processor);
                 log::info!(
-                    "AI traces (ai.* spans only) will be sent to OpenObserve: {}",
+                    "AI traces (ai.* spans only) will be sent to ExposedObserve: {}",
                     cfg.common.otel_otlp_url
                 );
             } else if !cfg.common.otel_otlp_grpc_url.is_empty() {
@@ -454,7 +457,7 @@ pub fn enable_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider, a
 
                 tracer_builder = tracer_builder.with_span_processor(filtered_processor);
                 log::info!(
-                    "AI traces (ai.* spans only) will be sent to OpenObserve (gRPC): {}",
+                    "AI traces (ai.* spans only) will be sent to ExposedObserve (gRPC): {}",
                     cfg.common.otel_otlp_grpc_url
                 );
             } else {

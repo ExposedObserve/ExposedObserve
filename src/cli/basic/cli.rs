@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -42,28 +43,28 @@ macro_rules! arg {
 }
 
 fn create_cli_app() -> Command {
-    Command::new("openobserve")
+    Command::new("exposedobserve")
         .version(config::VERSION)
         .about(clap::crate_description!())
         .arg(arg!("config", 'c', "config", "Path to config file"))
         .subcommands(&[
             Command::new("reset")
-                .about("reset openobserve data")
+                .about("reset ExposedObserve data")
                 .arg(arg!("component", 'c', "component", "reset data of the component: root, user, alert, dashboard, function, stream-stats, file-list-jobs, index-updated-at", true))
                 .arg(arg!("time", 't', "time", "timestamp in microseconds, used by file-list-jobs (default: 0) and index-updated-at (default: stream min data date)"))
                 .arg(arg!("stream", 's', "stream", "stream key org/stream_type/stream_name, used by stream-stats, file-list-jobs and index-updated-at (default: all streams)")),
             Command::new("import")
-                .about("import openobserve data").args(dataArgs()),
+                .about("import ExposedObserve data").args(dataArgs()),
             Command::new("export")
-                .about("export openobserve data").args(dataArgs()),
+                .about("export ExposedObserve data").args(dataArgs()),
             Command::new("view")
-                .about("view openobserve data")
+                .about("view ExposedObserve data")
                 .arg(arg!("component", 'c', "component", "view data of the component: version, user")),
             Command::new("init-dir")
-                .about("init openobserve data dir")
+                .about("init ExposedObserve data dir")
                 .arg(arg!("path", 'p', "path", "init this path as data root dir")),
             Command::new("init-db")
-                    .about("init openobserve database tables"),
+                    .about("init ExposedObserve database tables"),
             Command::new("upgrade-db")
                 .about("upgrade db table schemas"),
             Command::new("migrate-file-list")

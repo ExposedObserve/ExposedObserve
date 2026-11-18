@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -135,7 +136,7 @@ async fn run() -> Result<(), anyhow::Error> {
         }
     };
 
-    log::info!("Starting OpenObserve {}", config::VERSION);
+    log::info!("Starting ExposedObserve {}", config::VERSION);
     log::info!(
         "System info: CPU cores {}, MEM total {}, Disk total {}, free {}",
         cfg.limit.real_cpu_num,
@@ -326,7 +327,7 @@ async fn run() -> Result<(), anyhow::Error> {
     if cfg.common.telemetry_enabled {
         tokio::task::spawn(async move {
             meta::telemetry::Telemetry::new()
-                .send_track_event("OpenObserve - Starting server", None, true, false)
+                .send_track_event("ExposedObserve - Starting server", None, true, false)
                 .await;
         });
     }
@@ -443,7 +444,7 @@ async fn run() -> Result<(), anyhow::Error> {
     // stop telemetry
     if cfg.common.telemetry_enabled {
         meta::telemetry::Telemetry::new()
-            .send_track_event("OpenObserve - Server stopped", None, true, true)
+            .send_track_event("ExposedObserve - Server stopped", None, true, true)
             .await;
     }
 
@@ -609,10 +610,10 @@ mod tests {
     #[tokio::test]
     async fn test_telemetry_event_creation() {
         // Test telemetry event patterns used in the main function
-        let event_name = "OpenObserve - Starting server";
-        let stop_event = "OpenObserve - Server stopped";
+        let event_name = "ExposedObserve - Starting server";
+        let stop_event = "ExposedObserve - Server stopped";
 
-        assert!(event_name.contains("OpenObserve"));
+        assert!(event_name.contains("ExposedObserve"));
         assert!(event_name.contains("Starting"));
         assert!(stop_event.contains("Server stopped"));
 
