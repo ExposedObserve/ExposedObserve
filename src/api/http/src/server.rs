@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +17,8 @@
 use std::{cmp::max, net::SocketAddr, time::Duration};
 
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
+#[cfg(feature = "sso")]
+use oidc;
 use tower_http::compression::CompressionLayer;
 
 use crate::handler::http::router::create_app_router;
@@ -37,7 +40,30 @@ pub async fn run(ui_routes: fn(&str) -> axum::Router) -> Result<(), anyhow::Erro
         }
     );
 
-    let app = apply_common_middlewares(create_app_router(ui_routes)).layer(CompressionLayer::new());
+    // An invalid OIDC setting stops the node: it would authorise requests
+    // with the wrong rules. A provider that cannot be reached is not fatal,
+    // so `oidc::init()` only returns an error for the former.
+    #[cfg(feature = "sso")]
+    oidc::init()
+        .await
+        .map_err(|e| anyhow::anyhow!("OIDC init failed: {e}"))?;
+
+    // A session the process cannot share is a session no other node can
+    // resolve, so a request proxied to a peer would come back unauthorized.
+    // Every store is shared today, so this only fires if a process-local store
+    // is ever added back.
+    #[cfg(feature = "sso")]
+    if oidc::store::OIDC_STORE.is_process_local() && !cfg.common.local_mode {
+        return Err(anyhow::anyhow!(
+            "The OIDC session store ({}) is local to this process, but this node runs in a \
+             cluster. Every node must share one session store.",
+            oidc::store::OIDC_STORE.kind()
+        ));
+    }
+
+    let app = apply_common_middlewares(create_app_router(ui_routes))
+        .await
+        .layer(CompressionLayer::new());
     let app = if !cfg.common.tracing_enabled
         && (cfg.common.tracing_search_enabled || cfg.common.search_inspector_enabled)
     {
@@ -66,23 +92,29 @@ pub fn server_addr() -> Result<SocketAddr, anyhow::Error> {
 }
 
 /// Apply access logging, slow logging and client IP resolution.
-pub fn apply_common_middlewares(app: axum::Router) -> axum::Router {
+pub async fn apply_common_middlewares(app: axum::Router) -> axum::Router {
     let cfg = config::get_config();
     let ip_sources = config::axum::middlewares::resolve_client_ip_sources(&cfg.http.real_ip_source);
     log::info!(
         "HTTP client IP sources (in order, implicit ConnectInfo fallback): {}",
         cfg.http.real_ip_source
     );
-    app.layer(config::axum::middlewares::AccessLogLayer::new(
-        config::axum::middlewares::get_http_access_log_format(),
-    ))
-    .layer(config::axum::middlewares::SlowLogLayer::new(
-        cfg.limit.http_slow_log_threshold,
-    ))
-    .layer(axum::middleware::from_fn(
-        config::axum::middlewares::extract_real_ip,
-    ))
-    .layer(axum::Extension(ip_sources))
+    let mut app: axum::Router = app
+        .layer(config::axum::middlewares::AccessLogLayer::new(
+            config::axum::middlewares::get_http_access_log_format(),
+        ))
+        .layer(config::axum::middlewares::SlowLogLayer::new(
+            cfg.limit.http_slow_log_threshold,
+        ))
+        .layer(axum::middleware::from_fn(
+            config::axum::middlewares::extract_real_ip,
+        ))
+        .layer(axum::Extension(ip_sources));
+    #[cfg(feature = "sso")]
+    if oidc::store::OIDC_STORE.need_session() {
+        app = oidc::session::add_session_layer(app);
+    }
+    app
 }
 
 /// Serve a router with the configured TLS and bounded graceful shutdown.

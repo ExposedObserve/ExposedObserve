@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -24,6 +25,8 @@ use axum::{
     routing::{delete, get, patch, post, put},
 };
 use config::get_config;
+#[cfg(feature = "sso")]
+use oidc;
 use openobserve_api_common::X_O2_ASSISTANT_SESSION_ID;
 use openobserve_api_ingest::request::{clusters, logs, metrics, profiles, rum};
 #[cfg(feature = "cloud")]
@@ -73,7 +76,8 @@ use crate::{
             validator_rum,
         },
         router::middlewares::{
-            blocked_orgs_middleware, password_policy_middleware, root_only_middleware,
+            active_auth_middleware, blocked_orgs_middleware, password_policy_middleware,
+            root_only_middleware,
         },
     },
 };
@@ -734,10 +738,21 @@ pub fn basic_routes() -> Router {
         .route("/invites/{token}", delete(users::decline_invitation));
     router = router.nest("/auth", auth_routes);
 
+    // OIDC routes (no authentication required). Mounted on `/auth/sso/*`
+    // alongside the email/password login at `/auth/login`. The
+    // `tower-sessions` layer is applied inside `sso_routes()` so handlers
+    // can persist PKCE state, OAuth tokens and the OIDC presence flag
+    // across the round trip to the IdP. `oidc::init()` must have been
+    // called first so the cached layer is available.
+    #[cfg(feature = "sso")]
+    {
+        router = router.nest("/auth", oidc::handlers::sso_routes());
+    }
+
     let node_routes = node_routes()
         // Listed first, so it wraps closer to the route and runs after authentication.
         .layer(middleware::from_fn(password_policy_middleware))
-        .layer(middleware::from_fn(auth_middleware));
+        .layer(middleware::from_fn(active_auth_middleware));
 
     router = router.nest("/node", node_routes);
 
@@ -749,7 +764,7 @@ pub fn basic_routes() -> Router {
             .route("/profile/stats", get(profiling::jemalloc_stats))
             .route("/profile/cpu", get(profiling::cpu_profile))
             .layer(middleware::from_fn(password_policy_middleware))
-            .layer(middleware::from_fn(auth_middleware));
+            .layer(middleware::from_fn(active_auth_middleware));
 
         router = router.nest("/debug", debug_routes);
     }
@@ -836,7 +851,7 @@ pub fn config_routes() -> Router {
     Router::new()
         .route("/reload", get(status::config_reload))
         .route_layer(middleware::from_fn(password_policy_middleware))
-        .route_layer(middleware::from_fn(auth_middleware))
+        .route_layer(middleware::from_fn(active_auth_middleware))
         .route("/", get(status::zo_config_bootstrap))
         .route("/logout", get(status::logout))
 }
@@ -846,7 +861,7 @@ pub fn config_routes() -> Router {
     Router::new()
         .route("/reload", get(status::config_reload))
         .route_layer(middleware::from_fn(password_policy_middleware))
-        .route_layer(middleware::from_fn(auth_middleware))
+        .route_layer(middleware::from_fn(active_auth_middleware))
         .route("/", get(status::zo_config_bootstrap))
         .route("/logout", get(status::logout))
         .route("/redirect", get(status::redirect))
@@ -2071,7 +2086,7 @@ pub fn service_routes() -> Router {
         // Between auth and audit: it needs the email authentication resolves, and a request it
         // refuses never reached a handler, so there is nothing for the audit trail to record.
         .layer(middleware::from_fn(password_policy_middleware))
-        .layer(middleware::from_fn(auth_middleware))
+        .layer(middleware::from_fn(active_auth_middleware))
         .layer(RequestDecompressionLayer::new())
         .layer(middleware::from_fn(
             decompression::preprocess_encoding_middleware,

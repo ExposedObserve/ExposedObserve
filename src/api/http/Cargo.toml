@@ -42,6 +42,8 @@ vectorscan = [
     "stream/vectorscan",
 ]
 profiling = ["openobserve-api-management/profiling"]
+sso = ["dep:oidc", "openobserve-api-management/sso", "openobserve-api-common/sso", "openobserve-core/sso"]
+sso-redis = ["sso", "oidc/redis-session"]
 
 [dependencies]
 common.workspace = true
@@ -76,6 +78,7 @@ log.workspace = true
 o2_dex = { workspace = true, optional = true }
 o2_enterprise = { workspace = true, optional = true, default-features = false }
 o2_ratelimit = { workspace = true, optional = true }
+oidc = { workspace = true, optional = true }
 rand.workspace = true
 regex.workspace = true
 reqwest.workspace = true
