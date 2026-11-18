@@ -1,4 +1,5 @@
 ﻿<!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -104,16 +105,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         >
           <a :href="homeUrl" @click.prevent="goToHome" class="inline-flex items-center">
             <img
-              data-test="header-openobserve-logo"
-              class="openobserve-logo block h-8 max-w-37.5 cursor-pointer transition-opacity duration-200 hover:opacity-80"
-              :src="
-                getImageURL(
-                  isDark
-                    ? 'images/common/openobserve_latest_dark_2.svg'
-                    : 'images/common/openobserve_latest_light_2.svg',
-                )
-              "
-              :alt="raw('OpenObserve')"
+              data-test="header-app-logo"
+              class="app-logo block h-8 max-w-37.5 cursor-pointer transition-opacity duration-200 hover:opacity-80"
+              :src="getImageURL(isDark ? config.logoDark : config.logoLight)"
+              :alt="config.appName"
             />
           </a>
         </div>
@@ -123,16 +118,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
       <div v-else class="relative-position relative inline-flex min-h-10 items-center">
         <a :href="homeUrl" @click.prevent="goToHome" class="inline-flex items-center">
           <img
-            data-test="header-openobserve-logo"
-            class="openobserve-logo block h-8 max-w-37.5 cursor-pointer transition-opacity duration-200 hover:opacity-80"
-            :src="
-              getImageURL(
-                isDark
-                  ? 'images/common/openobserve_latest_dark_2.svg'
-                  : 'images/common/openobserve_latest_light_2.svg',
-              )
-            "
-            :alt="raw('OpenObserve')"
+            data-test="header-app-logo"
+            class="app-logo block h-8 max-w-37.5 cursor-pointer transition-opacity duration-200 hover:opacity-80"
+            :src="getImageURL(isDark ? config.logoDark : config.logoLight)"
+            :alt="config.appName"
           />
         </a>
       </div>
@@ -184,33 +173,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             align="center"
             :content="t('common.warningIngestionQuota', { percent: ingestionQuotaPercentage })"
           />
-        </OButton>
-
-        <!-- EDITION BADGE / UPGRADE BUTTON -->
-        <!-- Enterprise/Cloud: ghost-muted badge (informational, opens about dialog) -->
-        <!-- Open Source: primary CTA to drive upgrades -->
-        <OButton
-          :variant="
-            config.isEnterprise === 'true' || config.isCloud === 'true'
-              ? 'outline-primary'
-              : 'primary'
-          "
-          size="xs"
-          class="max-md:hidden"
-          data-test="upgrade-to-enterprise-btn"
-          @click="openEnterpriseDialog"
-        >
-          <template #icon-left>
-            <OIcon
-              :name="
-                config.isEnterprise === 'true' || config.isCloud === 'true'
-                  ? 'verified'
-                  : 'card-giftcard'
-              "
-              size="sm"
-            />
-          </template>
-          {{ enterpriseButtonText }}
         </OButton>
 
         <!-- ORGANIZATION SELECTOR: Dropdown to switch between organizations -->
@@ -440,9 +402,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
       </div>
     </div>
     <!-- end right side -->
-
-    <!-- Enterprise Upgrade Dialog -->
-    <EnterpriseUpgradeDialog v-model="showEnterpriseDialog" />
   </div>
 </template>
 
@@ -452,7 +411,7 @@ import { useRouter } from "vue-router";
 import { raw, useI18nTyped } from "@/types/i18n";
 import { useTheme } from "@/composables/useTheme";
 import ThemeSwitcher from "./ThemeSwitcher.vue";
-import EnterpriseUpgradeDialog from "./EnterpriseUpgradeDialog.vue";
+
 import OrganizationSelector from "./OrganizationSelector.vue";
 import OIcon from "@/lib/core/Icon/OIcon.vue";
 import OButton from "@/lib/core/Button/OButton.vue";
@@ -469,7 +428,6 @@ export default defineComponent({
   name: "HeaderComponent",
   components: {
     ThemeSwitcher,
-    EnterpriseUpgradeDialog,
     OrganizationSelector,
     OButton,
     OIcon,
@@ -577,25 +535,8 @@ export default defineComponent({
       }).href;
     });
 
-    // Enterprise upgrade dialog state
-    const showEnterpriseDialog = ref(false);
-
     // Language sub-menu state (nested submenu pattern matching original UX)
     const showLanguageSubmenu = ref(false);
-
-    // Computed property for enterprise button text based on deployment type
-    const enterpriseButtonText = computed(() => {
-      const isEnterprise = props.config.isEnterprise === "true";
-      const isCloud = props.config.isCloud === "true";
-
-      if (isCloud) {
-        return t("about.header_button.cloud_features", { product: raw("OpenObserve") });
-      } else if (isEnterprise) {
-        return t("about.header_button.enterprise_edition");
-      } else {
-        return t("about.header_button.get_enterprise_free");
-      }
-    });
 
     // Computed property for ingestion quota percentage
     const ingestionQuotaPercentage = computed(() => {
@@ -669,20 +610,13 @@ export default defineComponent({
       emit("updateOrganization");
     };
 
-    // Open enterprise upgrade dialog
-    const openEnterpriseDialog = () => {
-      showEnterpriseDialog.value = true;
-    };
-
     return {
       isDark,
       t,
       raw,
       getImageURL,
-      enterpriseButtonText,
       ingestionQuotaPercentage,
       ingestionQuotaColor,
-      showEnterpriseDialog,
       showLanguageSubmenu,
       updateOrganization,
       goToHome,
@@ -699,21 +633,7 @@ export default defineComponent({
       handleMouseEnter,
       handleMouseLeave,
       handleOrgSelection,
-      openEnterpriseDialog,
     };
   },
 });
 </script>
-
-<style scoped>
-/* keep(lib-override:o2-button): dark-only, element-scoped re-point of OButton's
-   ghost-primary tokens for the navbar upgrade CTA. The custom properties are READ by OButton's
-   own internal DOM, so they have to be declared on the button element itself —
-   there is no utility that sets them. Scoping appends [data-v] to the
-   [data-test] compound, which is OButton's root and therefore carries this
-   component's scope id. Was a global in styles/utilities.css (W1.d). */
-.dark [data-test="upgrade-to-enterprise-btn"] {
-  --color-button-ghost-primary-active-bg: var(--color-primary-900);
-  --color-button-ghost-primary-text: var(--color-primary-200);
-}
-</style>
