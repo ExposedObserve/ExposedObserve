@@ -1,4 +1,5 @@
 <!-- Copyright 2026 OpenObserve Inc.
+Modifications Copyright (C) 2026 Mike Sauh
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -185,9 +186,14 @@ import { useStore } from "vuex";
 import OIcon from "@/lib/core/Icon/OIcon.vue";
 import { raw, useI18nTyped, type I18nText } from "@/types/i18n";
 import { FEATURE_REGISTRY, getFeatureNameKey, type FeatureDefinition } from "@/constants/features";
+import config from "@/aws-exports";
 
 const store = useStore();
 const { t } = useI18nTyped();
+
+// The fork ships no paid tier of its own, so the non-current editions point
+// at the fork's own project page instead of the upstream vendor's pricing pages.
+const FORK_URL = config.websiteUrl;
 
 const buildType: string = store.state.zoConfig.build_type;
 
@@ -232,7 +238,7 @@ const editionList = computed((): EditionMeta[] => [
     license: raw("AGPL"),
     support: t("about.value_support_community"),
     ctaLabel: buildType === "opensource" ? t("about.currentPlan") : t("about.learnMore"),
-    ctaUrl: buildType === "opensource" ? null : "https://openobserve.ai",
+    ctaUrl: buildType === "opensource" ? null : FORK_URL,
   },
   {
     id: "enterprise",
@@ -243,7 +249,7 @@ const editionList = computed((): EditionMeta[] => [
     license: t("about.value_license_enterprise"),
     support: t("about.value_support_enterprise"),
     ctaLabel: buildType === "enterprise" ? t("about.currentPlan") : t("about.download"),
-    ctaUrl: buildType === "enterprise" ? null : "https://openobserve.ai/download",
+    ctaUrl: buildType === "enterprise" ? null : FORK_URL,
   },
   {
     id: "cloud",
@@ -254,7 +260,7 @@ const editionList = computed((): EditionMeta[] => [
     license: t("about.value_license_cloud"),
     support: t("about.value_support_cloud"),
     ctaLabel: buildType === "cloud" ? t("about.currentPlan") : t("about.startFreeTrial"),
-    ctaUrl: buildType === "cloud" ? null : "https://cloud.openobserve.ai",
+    ctaUrl: buildType === "cloud" ? null : FORK_URL,
   },
 ]);
 

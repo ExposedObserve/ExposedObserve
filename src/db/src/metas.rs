@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -83,6 +84,20 @@ pub mod ext_auth_salt {
     use infra::errors::Result;
 
     const KEY: &str = "/ext_auth_salt/";
+
+    pub async fn get() -> Result<Option<String>> {
+        super::secret::get(KEY).await
+    }
+
+    pub async fn get_or_create(candidate: &str) -> Result<String> {
+        super::secret::get_or_create(KEY, candidate).await
+    }
+}
+
+pub mod oidc_session_key {
+    use infra::errors::Result;
+
+    const KEY: &str = "/oidc_session_key/";
 
     pub async fn get() -> Result<Option<String>> {
         super::secret::get(KEY).await

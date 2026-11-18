@@ -1,4 +1,5 @@
 // Copyright 2026 OpenObserve Inc.
+// Modifications Copyright (C) 2026 Mike Sauh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,6 +18,7 @@ import { fileURLToPath, URL } from "node:url";
 import { spawn } from "node:child_process";
 
 import { defineConfig, loadEnv } from "vite";
+import { DEFAULT_APP_NAME } from "./src/constants/brand";
 
 // Runs `node <scriptPath>` as a child process and resolves when it finishes.
 // We use spawn (not execFileSync/execFile) for two reasons:
@@ -94,6 +96,16 @@ const fontLicensePlugin = {
       fileName: "fonts/OFL.txt",
       source: fs.readFileSync(src, "utf8"),
     });
+  },
+};
+
+// Substitutes %APP_NAME% in index.html with the configured brand. The static
+// <title> is read before any JS runs, so it cannot come from the runtime config.
+const appNamePlugin = {
+  name: "app-name",
+  transformIndexHtml(html: string) {
+    const configured = process.env.VITE_APP_NAME?.trim();
+    return html.replace(/%APP_NAME%/g, configured || DEFAULT_APP_NAME);
   },
 };
 
@@ -202,6 +214,7 @@ export default defineConfig(({ mode }) => {
     base: "./",
     plugins: [
       vue(),
+      appNamePlugin,
       fontLicensePlugin,
       debugFilterPlugin,
       process.env.VITE_COVERAGE === "true" &&
