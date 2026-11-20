@@ -190,6 +190,7 @@ mod tests {
             "groups",
             "^(?<org>.*)$",
             "user",
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),

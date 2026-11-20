@@ -1985,6 +1985,7 @@ mod tests {
             "user",
             Some("sub"),
             Some("email"),
+            None,
             std::collections::HashSet::new(),
         )
         .unwrap();

@@ -226,3 +226,26 @@ git diff --cached --quiet || git commit -m "chore(lock): update dependency lockf
    python3 scripts/check-license-headers.py "$BASE_TAG"
    ```
 
+---
+
+## 7. Pushing the finished stack (remote diverged)
+
+When the local 4-commit stack is the finished, gate-passed work and the remote holds
+an outdated intermediate snapshot of the same stack (FF impossible — the
+`fork-sync` §6 force-update case), push with a backup branch and a lease:
+
+```bash
+git branch -f backup/pre-push-<branch> HEAD   # safety pointer
+git fetch origin <branch>                     # fresh lease
+git push --force-with-lease origin <branch>   # never bare --force
+```
+
+Verify the remote actually moved before reporting done:
+
+```bash
+git ls-remote --heads origin <branch>   # must equal `git rev-parse HEAD`
+```
+
+A lease rejection means the remote moved again — stop and re-investigate, never
+retry with a stronger force.
+

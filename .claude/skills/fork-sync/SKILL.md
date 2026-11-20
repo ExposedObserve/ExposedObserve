@@ -101,10 +101,27 @@ Even if `git rebase --onto` finishes with zero conflicts, `<new-tag>` may have i
    git -C /tmp/forkcheck.git describe --tags --abbrev=0 --match "v*" origin/eo-dev
    # must print <new-tag>
    ```
-6. **Update `eo-dev` / `master` and push.** After a rebase onto `<new-tag>` the
+6. **Publish the candidate first, then `eo-dev` / `master`.** Pushing straight to
+   `master` overwrites the released branch with work nobody has built yet, and the
+   `master` workflow publishes `:latest` from whatever lands there. Publish a
+   candidate branch, let the build run, and only then move the released branches.
+
+   ```bash
+   # The candidate branch builds and publishes under :sha-<short> only, so it
+   # cannot overwrite :latest, :dev or :nightly.
+   git push origin HEAD:refs/heads/eo-dev-<new-tag>
+   ```
+
+   Wait for that run to finish **green** before touching `master`:
+
+   ```bash
+   gh run list --branch eo-dev-<new-tag> --limit 1
+   ```
+
+   Only then update the released branches. After a rebase onto `<new-tag>` the
    remote branches still point at the old pre-rebase history, so a **fast-forward is
-   impossible** — `<new-tag>` is not an ancestor of `origin/master`. Check which case
-   you are in instead of assuming:
+   impossible** — `<new-tag>` is not an ancestor of `origin/master`. Check which
+   case you are in instead of assuming:
 
    ```bash
    git merge-base --is-ancestor origin/master HEAD \

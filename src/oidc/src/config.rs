@@ -53,6 +53,7 @@ pub static OIDC_LOGOUT_REDIRECT_URL: &str = "OIDC_LOGOUT_REDIRECT_URL";
 pub static OIDC_ORG_CLAIM: &str = "OIDC_ORG_CLAIM";
 pub static OIDC_ORG_CLAIM_PATTERN: &str = "OIDC_ORG_CLAIM_PATTERN";
 pub static OIDC_DEFAULT_ROLE: &str = "OIDC_DEFAULT_ROLE";
+pub static OIDC_ADMIN_ORG: &str = "OIDC_ADMIN_ORG";
 pub static OIDC_SUBJECT_CLAIM: &str = "OIDC_SUBJECT_CLAIM";
 pub static OIDC_EMAIL_CLAIM: &str = "OIDC_EMAIL_CLAIM";
 pub static OIDC_ORG_BLACKLIST: &str = "OIDC_ORG_BLACKLIST";
@@ -254,6 +255,8 @@ pub struct OidcConfig {
     pub org_claim: String,
     pub org_claim_pattern: Regex,
     pub default_role: UserRole,
+    /// Org whose members are elevated to `Admin` in every organization.
+    pub admin_org: Option<String>,
     pub subject_claim: Option<String>,
     pub email_claim: Option<String>,
     pub org_blacklist: HashSet<String>,
@@ -274,6 +277,7 @@ impl OidcConfig {
         org_claim: &str,
         org_claim_pattern: &str,
         default_role: &str,
+        admin_org: Option<&str>,
         subject_claim: Option<&str>,
         email_claim: Option<&str>,
         org_blacklist: HashSet<String>,
@@ -310,6 +314,10 @@ impl OidcConfig {
             org_claim: org_claim.to_owned(),
             org_claim_pattern: pattern,
             default_role: UserRole::from_str(default_role).unwrap_or(UserRole::User),
+            admin_org: admin_org
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_owned()),
             subject_claim: subject_claim.map(|s| s.to_owned()),
             email_claim: email_claim.map(|s| s.to_owned()),
             org_blacklist,
@@ -396,6 +404,7 @@ fn build_default_config() -> OidcConfig {
         OIDC_ORG_CLAIM_DEFAULT_VALUE,
         OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE,
         OIDC_DEFAULT_ROLE_DEFAULT_VALUE,
+        None,
         Some("sub"),
         Some("email"),
         HashSet::new(),
@@ -437,6 +446,10 @@ pub fn load_config_from_env() -> Result<OidcConfig, AuthError> {
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
         .unwrap_or_else(|| OIDC_DEFAULT_ROLE_DEFAULT_VALUE.to_string());
+    let admin_org = env::var(OIDC_ADMIN_ORG)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
     let subject_claim = env::var(OIDC_SUBJECT_CLAIM).ok().filter(|s| !s.is_empty());
     let email_claim = env::var(OIDC_EMAIL_CLAIM).ok().filter(|s| !s.is_empty());
 
@@ -522,6 +535,7 @@ pub fn load_config_from_env() -> Result<OidcConfig, AuthError> {
         &org_claim,
         &org_claim_pattern,
         &default_role,
+        admin_org.as_deref(),
         subject_claim.as_deref(),
         email_claim.as_deref(),
         org_blacklist,
@@ -642,6 +656,7 @@ mod tests {
             OIDC_ORG_CLAIM_DEFAULT_VALUE,
             OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE,
             OIDC_DEFAULT_ROLE_DEFAULT_VALUE,
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),
@@ -679,6 +694,7 @@ mod tests {
             // Unclosed capture group: the regex engine rejects this outright.
             "^(?<org>.*$",
             OIDC_DEFAULT_ROLE_DEFAULT_VALUE,
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),
@@ -702,6 +718,7 @@ mod tests {
             OIDC_ORG_CLAIM_DEFAULT_VALUE,
             OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE,
             "wizard",
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),
@@ -817,6 +834,7 @@ mod tests {
             OIDC_ORG_CLAIM_DEFAULT_VALUE,
             OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE,
             OIDC_DEFAULT_ROLE_DEFAULT_VALUE,
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),
@@ -844,6 +862,7 @@ mod tests {
             OIDC_ORG_CLAIM_DEFAULT_VALUE,
             OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE,
             OIDC_DEFAULT_ROLE_DEFAULT_VALUE,
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),
@@ -871,6 +890,7 @@ mod tests {
             OIDC_ORG_CLAIM_DEFAULT_VALUE,
             OIDC_ORG_CLAIM_PATTERN_DEFAULT_VALUE,
             OIDC_DEFAULT_ROLE_DEFAULT_VALUE,
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),

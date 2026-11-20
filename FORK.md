@@ -45,3 +45,29 @@ When you want to move your branch to a newer version of OpenObserve:
    4-layer stack created by `fork-commit-prep`.
 3. **Finish & Push:** resolve conflicts layer by layer, run the `fork-rebrand` sweep
    and its build gates, then mirror the upstream tags as described above.
+
+### 3. Publishing without breaking the released images
+
+`master` publishes `:latest` and `eo-dev` publishes `:dev` and `:nightly`, so a push
+to either replaces an image users pull. A build that has not been seen green yet
+should not land there.
+
+Push the work to a candidate branch first. It publishes only `:sha-<short>`, so it
+cannot overwrite a released image:
+
+```bash
+git push origin HEAD:refs/heads/eo-dev-<tag>
+gh run list --branch eo-dev-<tag> --limit 1   # wait for it to go green
+```
+
+Only then move the released branches, and tag the result:
+
+```bash
+git push --force-with-lease origin master eo-dev
+git tag -a "eo-<tag>-$(git rev-parse --short=10 HEAD)" -m "..." HEAD
+git push origin "eo-<tag>-$(git rev-parse --short=10 HEAD)"
+```
+
+The `eo-dev-*` branches also serve as the place for intermediate builds while a
+feature is still being worked on: they build the image without touching the released
+tags, so a candidate can be tried out before it is promoted.
