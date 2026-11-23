@@ -48,6 +48,7 @@ fn config_with_callback_url(callback_url: &str) -> OidcConfig {
         "groups",
         "^(?<org>.*)$",
         "user",
+        None,
         Some("sub"),
         Some("email"),
         HashSet::new(),

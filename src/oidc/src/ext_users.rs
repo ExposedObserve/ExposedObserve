@@ -52,7 +52,9 @@ pub async fn sync_user_info(user_info: &UserInfo) -> Result<(), AuthError> {
     let user_email = user_info.email.as_str();
     let db_user = db::user::get_user_by_email(user_email).await;
 
-    let user_orgs = match check_and_create_user_orgs(user_info).await {
+    let effective = apply_admin_org_elevation(user_info).await?;
+
+    let user_orgs = match check_and_create_user_orgs(&effective).await {
         Ok(orgs) => orgs,
         Err(err) => {
             let context = format!(
@@ -66,8 +68,52 @@ pub async fn sync_user_info(user_info: &UserInfo) -> Result<(), AuthError> {
     if db_user.is_none() {
         add_new_user(user_email, first_name, last_name, user_orgs).await
     } else {
-        check_and_update_orgs_users(user_info).await
+        check_and_update_orgs_users(&effective).await
     }
+}
+
+/// Returns the user view the provisioner should act on. When the IdP claims
+/// membership in the configured admin org, every existing org is granted
+/// `Admin` so the reconciliation below materializes (and later revokes) the
+/// elevation; otherwise the IdP's own claims are returned unchanged.
+async fn apply_admin_org_elevation(user_info: &UserInfo) -> Result<UserInfo, AuthError> {
+    let config = get_oidc_config();
+    let Some(admin_org) = config.admin_org.as_deref() else {
+        return Ok(user_info.clone());
+    };
+    let claimed = user_info
+        .orgs
+        .iter()
+        .any(|org| org.eq_ignore_ascii_case(admin_org));
+    if !claimed {
+        return Ok(user_info.clone());
+    }
+
+    let blacklist = &config.org_blacklist;
+    let all_orgs = db::organization::list(None)
+        .await
+        .map_err(|err| AuthError::internal("Failed to list organizations", err))?;
+    let org_roles: std::collections::HashMap<String, String> = all_orgs
+        .into_iter()
+        .map(|org| org.identifier)
+        .filter(|id| !blacklist.contains(id))
+        .map(|id| (id, "admin".to_string()))
+        .collect();
+    let orgs: std::collections::HashSet<String> = org_roles.keys().cloned().collect();
+    log::info!(
+        "User {} is a member of the admin org `{}`; elevating to Admin in {} orgs",
+        user_info.email,
+        admin_org,
+        orgs.len()
+    );
+
+    Ok(UserInfo {
+        sub: user_info.sub.clone(),
+        email: user_info.email.clone(),
+        orgs,
+        org_roles,
+        is_internal: user_info.is_internal,
+    })
 }
 
 /// The role an OIDC user holds in `org_id`.
@@ -124,6 +170,34 @@ async fn check_and_update_orgs_users(user_info: &UserInfo) -> Result<(), AuthErr
                 Err(err) => {
                     let context =
                         format!("Failed to remove user: {} from org: {}", email, org_name);
+                    return Err(AuthError::internal(context, err));
+                }
+            }
+            continue;
+        }
+
+        let want = role_for_org(user_info, org_name);
+        if org.role != want {
+            match db::org_users::update(
+                org_name,
+                email,
+                want.clone(),
+                &org.token,
+                org.rum_token.clone(),
+            )
+            .await
+            {
+                Ok(()) => {
+                    log::info!(
+                        "User: {} role in org: {} updated to {}",
+                        email,
+                        org_name,
+                        want
+                    );
+                }
+                Err(err) => {
+                    let context =
+                        format!("Failed to update user: {} role in org: {}", email, org_name);
                     return Err(AuthError::internal(context, err));
                 }
             }
@@ -233,6 +307,7 @@ mod tests {
             "groups",
             "^(?<org>[^:]+):(?<role>\\w+)$",
             "admin",
+            None,
             Some("sub"),
             Some("email"),
             HashSet::new(),
@@ -305,5 +380,34 @@ mod tests {
         let denied = crate::handlers::validate_user_info(&user, &mut parts)
             .expect_err("an unknown role must be rejected by the gate");
         assert_eq!(denied.status(), axum::http::StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    #[serial]
+    fn an_elevated_user_gets_admin_even_for_orgs_the_idp_never_claimed() {
+        install_config_with_admin_default();
+        let elevated = UserInfo {
+            orgs: HashSet::from(["acme".to_string(), "other".to_string()]),
+            org_roles: HashMap::from([
+                ("acme".to_string(), "admin".to_string()),
+                ("other".to_string(), "admin".to_string()),
+            ]),
+            ..user_with_role("viewer")
+        };
+        assert_eq!(role_for_org(&elevated, "other"), UserRole::Admin);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn admin_org_disabled_leaves_the_user_view_unchanged() {
+        install_config_with_admin_default();
+        let user = user_with_role("viewer");
+        let expected_orgs = user.orgs.clone();
+        let expected_roles = user.org_roles.clone();
+        let out = apply_admin_org_elevation(&user)
+            .await
+            .expect("no admin org configured must be a no-op");
+        assert_eq!(out.orgs, expected_orgs);
+        assert_eq!(out.org_roles, expected_roles);
     }
 }

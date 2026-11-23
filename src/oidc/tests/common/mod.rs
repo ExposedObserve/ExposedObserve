@@ -87,6 +87,7 @@ pub fn build_config(issuer: &str, org_claim_pattern: &str) -> OidcConfig {
         "groups",
         org_claim_pattern,
         "user",
+        None,
         Some("sub"),
         Some("email"),
         HashSet::new(),
